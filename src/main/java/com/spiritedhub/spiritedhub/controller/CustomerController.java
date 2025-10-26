@@ -3,15 +3,17 @@ package com.spiritedhub.spiritedhub.controller;
 import com.spiritedhub.spiritedhub.entity.Customer;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping("/api")
 public class CustomerController {
 
     @Autowired
@@ -21,50 +23,68 @@ public class CustomerController {
     private PasswordEncoder passwordEncoder;
 
     // =========================
-    // Get all customers
+    // SIGN UP - Create customer
     // =========================
-    @GetMapping
-    public List<Customer> getAllCustomers() {
-        return customerRepository.findAll();
-    }
-
-    // =========================
-    // Create customer / Signup
-    // =========================
-    @PostMapping
+    @PostMapping("/customers")
     public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
-        // Check if email exists
         if (customerRepository.findByEmail(customer.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email already exists");
+            return ResponseEntity.badRequest().body(
+                    new ApiResponse("Email already exists", null)
+            );
         }
 
-        // Hash password
         customer.setPassword(passwordEncoder.encode(customer.getPassword()));
         Customer savedCustomer = customerRepository.save(customer);
-        return ResponseEntity.ok(savedCustomer);
+
+        return ResponseEntity.ok(new ApiResponse("Customer created successfully", savedCustomer));
     }
 
     // =========================
-    // Get customer by ID
+    // CUSTOMER LOGIN
     // =========================
-    @GetMapping("/{id}")
+    @PostMapping("/auth/customer-login")
+public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
+    Optional<Customer> customerOpt = customerRepository.findByEmail(email);
+
+    if (customerOpt.isEmpty() || !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
+        return ResponseEntity.status(401)
+                .body(new ApiResponse("Invalid credentials", null));
+    }
+
+    return ResponseEntity.ok(new ApiResponse("Login successful", customerOpt.get()));
+}
+
+
+    // =========================
+    // GET ALL CUSTOMERS
+    // =========================
+    @GetMapping("/customers")
+    public ResponseEntity<?> getAllCustomers() {
+        List<Customer> customers = customerRepository.findAll();
+        return ResponseEntity.ok(new ApiResponse("Customers fetched successfully", customers));
+    }
+
+    // =========================
+    // GET CUSTOMER BY ID
+    // =========================
+    @GetMapping("/customers/{id}")
     public ResponseEntity<?> getCustomerById(@PathVariable Long id) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isPresent()) {
-            return ResponseEntity.ok(customerOpt.get());
+            return ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customerOpt.get()));
         } else {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
     }
 
     // =========================
-    // Update customer
+    // UPDATE CUSTOMER
     // =========================
-    @PutMapping("/{id}")
+    @PutMapping("/customers/{id}")
     public ResponseEntity<?> updateCustomer(@PathVariable Long id, @RequestBody Customer customerDetails) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
-        if (!customerOpt.isPresent()) {
-            return ResponseEntity.notFound().build();
+        if (customerOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
 
         Customer customer = customerOpt.get();
@@ -73,38 +93,37 @@ public class CustomerController {
         customer.setEmail(customerDetails.getEmail());
         customer.setPoints(customerDetails.getPoints());
 
-        // Update password if provided
         if (customerDetails.getPassword() != null && !customerDetails.getPassword().isEmpty()) {
             customer.setPassword(passwordEncoder.encode(customerDetails.getPassword()));
         }
 
         Customer updatedCustomer = customerRepository.save(customer);
-        return ResponseEntity.ok(updatedCustomer);
+        return ResponseEntity.ok(new ApiResponse("Customer updated successfully", updatedCustomer));
     }
 
     // =========================
-    // Delete customer
+    // DELETE CUSTOMER
     // =========================
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/customers/{id}")
     public ResponseEntity<?> deleteCustomer(@PathVariable Long id) {
         if (!customerRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
         customerRepository.deleteById(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new ApiResponse("Customer deleted successfully", null));
     }
 
     // =========================
-    // Export customers as CSV
+    // EXPORT CUSTOMERS TO CSV
     // =========================
-    @GetMapping("/export")
-    public void exportCustomers(jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    @GetMapping("/customers/export")
+    public void exportCustomers(HttpServletResponse response) throws IOException {
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"customers.csv\"");
 
         List<Customer> customers = customerRepository.findAll();
-        StringBuilder csv = new StringBuilder();
-        csv.append("id,cus_name,mobile,email,points\n");
+        StringBuilder csv = new StringBuilder("id,cus_name,mobile,email,points\n");
+
         for (Customer customer : customers) {
             csv.append(customer.getId()).append(",")
                     .append(customer.getCus_name()).append(",")
@@ -112,6 +131,28 @@ public class CustomerController {
                     .append(customer.getEmail()).append(",")
                     .append(customer.getPoints()).append("\n");
         }
+
         response.getWriter().write(csv.toString());
+    }
+
+    // =========================
+    // Helper class for consistent API responses
+    // =========================
+    private static class ApiResponse {
+        private String message;
+        private Object data;
+
+        public ApiResponse(String message, Object data) {
+            this.message = message;
+            this.data = data;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public Object getData() {
+            return data;
+        }
     }
 }
