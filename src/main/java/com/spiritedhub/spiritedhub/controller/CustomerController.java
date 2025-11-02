@@ -1,16 +1,27 @@
 package com.spiritedhub.spiritedhub.controller;
 
+import com.spiritedhub.spiritedhub.dto.CustomerDto;
 import com.spiritedhub.spiritedhub.entity.Customer;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
+import com.spiritedhub.spiritedhub.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -22,6 +33,9 @@ public class CustomerController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private CustomerService customerService;
+
     // =========================
     // SIGN UP - Create customer
     // =========================
@@ -29,8 +43,7 @@ public class CustomerController {
     public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
         if (customerRepository.findByEmail(customer.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body(
-                    new ApiResponse("Email already exists", null)
-            );
+                    new ApiResponse("Email already exists", null));
         }
 
         customer.setPassword(passwordEncoder.encode(customer.getPassword()));
@@ -43,17 +56,16 @@ public class CustomerController {
     // CUSTOMER LOGIN
     // =========================
     @PostMapping("/auth/customer-login")
-public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
-    Optional<Customer> customerOpt = customerRepository.findByEmail(email);
+    public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
+        Optional<Customer> customerOpt = customerRepository.findByEmail(email);
 
-    if (customerOpt.isEmpty() || !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
-        return ResponseEntity.status(401)
-                .body(new ApiResponse("Invalid credentials", null));
+        if (customerOpt.isEmpty() || !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
+            return ResponseEntity.status(401)
+                    .body(new ApiResponse("Invalid credentials", null));
+        }
+
+        return ResponseEntity.ok(new ApiResponse("Login successful", customerOpt.get()));
     }
-
-    return ResponseEntity.ok(new ApiResponse("Login successful", customerOpt.get()));
-}
-
 
     // =========================
     // GET ALL CUSTOMERS
@@ -155,4 +167,58 @@ public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam
             return data;
         }
     }
+
+    @PostMapping("/customers/upload-csv")
+    public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "No file uploaded",
+                    "success", false));
+        }
+
+        List<Customer> customers = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+
+            String line;
+            boolean isHeader = true;
+
+            while ((line = br.readLine()) != null) {
+                if (isHeader) {
+                    isHeader = false;
+                    continue; // skip header row
+                }
+
+                String[] data = line.split(",");
+
+                // ✅ Basic validation: must have at least 5 columns
+                if (data.length < 5)
+                    continue;
+
+                Customer customer = new Customer();
+                customer.setCus_name(data[1].trim());
+                customer.setMobile(data[2].trim());
+                customer.setEmail(data[3].trim());
+                customer.setPoints(Integer.parseInt(data[4].trim()));
+
+                customers.add(customer);
+            }
+
+            customerRepository.saveAll(customers);
+
+            // ✅ Return proper JSON response
+            return ResponseEntity.ok(Map.of(
+                    "message", "CSV imported successfully",
+                    "count", customers.size(),
+                    "success", true));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "message", "Error processing file: " + e.getMessage(),
+                    "success", false));
+        }
+    }
+
 }
