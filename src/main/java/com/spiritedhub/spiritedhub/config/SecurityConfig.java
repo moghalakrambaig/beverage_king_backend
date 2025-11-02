@@ -60,6 +60,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @SuppressWarnings("deprecation")
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
