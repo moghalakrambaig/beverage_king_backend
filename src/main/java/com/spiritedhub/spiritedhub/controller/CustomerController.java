@@ -82,6 +82,7 @@ public class CustomerController {
     // GET CUSTOMER BY ID
     // =========================
     @GetMapping("/customers/{id}")
+    @SuppressWarnings("null")
     public ResponseEntity<?> getCustomerById(@PathVariable Long id) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isPresent()) {
@@ -96,6 +97,7 @@ public class CustomerController {
     // =========================
     @PutMapping("/customers/{id}")
     public ResponseEntity<?> updateCustomer(@PathVariable Long id, @RequestBody Customer customerDetails) {
+        @SuppressWarnings("null")
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isEmpty()) {
             return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
@@ -118,6 +120,7 @@ public class CustomerController {
     // =========================
     // DELETE CUSTOMER
     // =========================
+    @SuppressWarnings("null")
     @DeleteMapping("/customers/{id}")
     public ResponseEntity<?> deleteCustomer(@PathVariable Long id) {
         if (!customerRepository.existsById(id)) {
@@ -152,6 +155,7 @@ public class CustomerController {
     // =========================
     // Helper class for consistent API responses
     // =========================
+    @SuppressWarnings("unused")
     private static class ApiResponse {
         private String message;
         private Object data;
