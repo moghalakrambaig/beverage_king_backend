@@ -223,4 +223,10 @@ public class CustomerController {
         }
     }
 
+    @DeleteMapping("/customers")
+    public ResponseEntity<String> deleteAllCustomers() {
+        customerRepository.deleteAll();
+        return ResponseEntity.ok("All customers deleted successfully.");
+    }
+
 }
