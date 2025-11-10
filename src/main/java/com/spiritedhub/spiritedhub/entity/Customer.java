@@ -1,10 +1,8 @@
 package com.spiritedhub.spiritedhub.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "customers")
@@ -14,22 +12,40 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Frontend "username"
-    private String cus_name;
-
-    // Optional: frontend can include mobile number
-    private String mobile;
-
+    private String displayId;
+    private String name;
+    private String phone;
     private String email;
+    private LocalDate signUpDate;
+    private String currentRank; 
 
-    // Points, if used in loyalty system
-    private int points = 0;
+    @Column(nullable = false)
+    private int earnedPoints = 0; // default 0
 
+    @Column(nullable = false)
+    private int totalVisits = 0; // default 0
+
+    @Column(nullable = false)
+    private double totalSpend = 0.0; // default 0.0
+
+    private LocalDate lastPurchaseDate;
+
+    @JsonProperty("isEmployee")
+    private boolean employee = false;
+
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    // internal_loyalty_customer_id from CSV
+    private String internalLoyaltyCustomerId;
+
+    // Password for login
     private String password;
 
     // ======================
     // Getters and Setters
     // ======================
+
     public Long getId() {
         return id;
     }
@@ -38,20 +54,28 @@ public class Customer {
         this.id = id;
     }
 
-    public String getCus_name() {
-        return cus_name;
+    public String getDisplayId() {
+        return displayId;
     }
 
-    public void setCus_name(String cus_name) {
-        this.cus_name = cus_name;
+    public void setDisplayId(String displayId) {
+        this.displayId = displayId;
     }
 
-    public String getMobile() {
-        return mobile;
+    public String getName() {
+        return name;
     }
 
-    public void setMobile(String mobile) {
-        this.mobile = mobile;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getEmail() {
@@ -62,12 +86,84 @@ public class Customer {
         this.email = email;
     }
 
-    public int getPoints() {
-        return points;
+    public String getCurrentRank() {
+        return currentRank;
     }
 
-    public void setPoints(int points) {
-        this.points = points;
+    public void setCurrentRank(String currentRank) {
+        this.currentRank = currentRank;
+    }
+
+    public LocalDate getSignUpDate() {
+        return signUpDate;
+    }
+
+    public void setSignUpDate(LocalDate signUpDate) {
+        this.signUpDate = signUpDate;
+    }
+
+    public int getEarnedPoints() {
+        return earnedPoints;
+    }
+
+    public void setEarnedPoints(Integer earnedPoints) {
+        this.earnedPoints = (earnedPoints != null) ? earnedPoints : 0;
+    }
+
+    public int getTotalVisits() {
+        return totalVisits;
+    }
+
+    public void setTotalVisits(Integer totalVisits) {
+        this.totalVisits = (totalVisits != null) ? totalVisits : 0;
+    }
+
+    public double getTotalSpend() {
+        return totalSpend;
+    }
+
+    public void setTotalSpend(Double totalSpend) {
+        this.totalSpend = (totalSpend != null) ? totalSpend : 0.0;
+    }
+
+    public LocalDate getLastPurchaseDate() {
+        return lastPurchaseDate;
+    }
+
+    public void setLastPurchaseDate(LocalDate lastPurchaseDate) {
+        this.lastPurchaseDate = lastPurchaseDate;
+    }
+
+    public boolean isEmployee() {
+        return employee;
+    }
+
+    public void setEmployee(boolean employee) {
+        this.employee = employee;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getInternalLoyaltyCustomerId() {
+        return internalLoyaltyCustomerId;
+    }
+
+    public void setInternalLoyaltyCustomerId(String internalLoyaltyCustomerId) {
+        this.internalLoyaltyCustomerId = internalLoyaltyCustomerId;
     }
 
     public String getPassword() {

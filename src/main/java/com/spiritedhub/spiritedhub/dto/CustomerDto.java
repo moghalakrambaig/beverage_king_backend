@@ -1,22 +1,53 @@
 package com.spiritedhub.spiritedhub.dto;
 
+import java.time.LocalDate;
+
 public class CustomerDto {
 
-    private Long id;
-    private String cus_name;
-    private String mobile;
-    private String email;
-    private int points;
+    private Long id;                      // Database ID (Primary Key)
+    private String displayId;             // Display ID (for frontend or internal use)
+    private String name;                  // Customer name
+    private String phone;                 // Customer phone number
+    private String email;                 // Customer email
+    private LocalDate signUpDate;         // Date of signup
+    private int earnedPoints;             // Loyalty points earned
+    private int totalVisits;              // Total number of visits
+    private double totalSpend;            // Total money spent
+    private LocalDate lastPurchaseDate;   // Last purchase date
+    private boolean isEmployee;           // Employee flag
+    private LocalDate startDate;          // Start date (for employees or program start)
+    private LocalDate endDate;            // End date (if applicable)
+    private String internalLoyaltyCustomerId; // Internal system reference
 
-    public CustomerDto(Long id, String cus_name, String mobile, String email, int points) {
+    // ==========================
+    // Constructors
+    // ==========================
+
+    public CustomerDto() {}
+
+    public CustomerDto(Long id, String displayId, String name, String phone, String email,
+                       LocalDate signUpDate, int earnedPoints, int totalVisits, double totalSpend,
+                       LocalDate lastPurchaseDate, boolean isEmployee, LocalDate startDate,
+                       LocalDate endDate, String internalLoyaltyCustomerId) {
         this.id = id;
-        this.cus_name = cus_name;
-        this.mobile = mobile;
+        this.displayId = displayId;
+        this.name = name;
+        this.phone = phone;
         this.email = email;
-        this.points = points;
+        this.signUpDate = signUpDate;
+        this.earnedPoints = earnedPoints;
+        this.totalVisits = totalVisits;
+        this.totalSpend = totalSpend;
+        this.lastPurchaseDate = lastPurchaseDate;
+        this.isEmployee = isEmployee;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.internalLoyaltyCustomerId = internalLoyaltyCustomerId;
     }
 
+    // ==========================
     // Getters and Setters
+    // ==========================
 
     public Long getId() {
         return id;
@@ -26,20 +57,28 @@ public class CustomerDto {
         this.id = id;
     }
 
-    public String getCus_name() {
-        return cus_name;
+    public String getDisplayId() {
+        return displayId;
     }
 
-    public void setCus_name(String cus_name) {
-        this.cus_name = cus_name;
+    public void setDisplayId(String displayId) {
+        this.displayId = displayId;
     }
 
-    public String getMobile() {
-        return mobile;
+    public String getName() {
+        return name;
     }
 
-    public void setMobile(String mobile) {
-        this.mobile = mobile;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getEmail() {
@@ -50,11 +89,75 @@ public class CustomerDto {
         this.email = email;
     }
 
-    public int getPoints() {
-        return points;
+    public LocalDate getSignUpDate() {
+        return signUpDate;
     }
 
-    public void setPoints(int points) {
-        this.points = points;
+    public void setSignUpDate(LocalDate signUpDate) {
+        this.signUpDate = signUpDate;
+    }
+
+    public int getEarnedPoints() {
+        return earnedPoints;
+    }
+
+    public void setEarnedPoints(int earnedPoints) {
+        this.earnedPoints = earnedPoints;
+    }
+
+    public int getTotalVisits() {
+        return totalVisits;
+    }
+
+    public void setTotalVisits(int totalVisits) {
+        this.totalVisits = totalVisits;
+    }
+
+    public double getTotalSpend() {
+        return totalSpend;
+    }
+
+    public void setTotalSpend(double totalSpend) {
+        this.totalSpend = totalSpend;
+    }
+
+    public LocalDate getLastPurchaseDate() {
+        return lastPurchaseDate;
+    }
+
+    public void setLastPurchaseDate(LocalDate lastPurchaseDate) {
+        this.lastPurchaseDate = lastPurchaseDate;
+    }
+
+    public boolean isEmployee() {
+        return isEmployee;
+    }
+
+    public void setEmployee(boolean employee) {
+        isEmployee = employee;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getInternalLoyaltyCustomerId() {
+        return internalLoyaltyCustomerId;
+    }
+
+    public void setInternalLoyaltyCustomerId(String internalLoyaltyCustomerId) {
+        this.internalLoyaltyCustomerId = internalLoyaltyCustomerId;
     }
 }
