@@ -80,7 +80,9 @@ public class CustomerController {
     @GetMapping("/customers/{id}")
     public ResponseEntity<?> getCustomerById(@PathVariable Long id) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
-        return customerOpt.<ResponseEntity<?>>map(customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
+        return customerOpt
+                .<ResponseEntity<?>>map(
+                        customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse("Customer not found", null)));
     }
 
@@ -128,6 +130,17 @@ public class CustomerController {
         return ResponseEntity.ok(new ApiResponse("Customer deleted successfully", null));
     }
 
+    @DeleteMapping("/customers")
+    public ResponseEntity<?> deleteAllCustomers() {
+        try {
+            customerRepository.deleteAll();
+            return ResponseEntity.ok(new ApiResponse("All customers deleted successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("Failed to delete all customers: " + e.getMessage(), null));
+        }
+    }
+
     // =========================
     // EXPORT CUSTOMERS TO CSV
     // =========================
@@ -137,22 +150,23 @@ public class CustomerController {
         response.setHeader("Content-Disposition", "attachment; filename=\"customers.csv\"");
 
         List<Customer> customers = customerRepository.findAll();
-        StringBuilder csv = new StringBuilder("Display ID,Name,Phone,Email,Sign Up Date,Earned Points,Total Visits,Total Spend,Last Purchase Date,Is Employee,Start Date,End Date,internal_loyalty_customer_id\n");
+        StringBuilder csv = new StringBuilder(
+                "Display ID,Name,Phone,Email,Sign Up Date,Earned Points,Total Visits,Total Spend,Last Purchase Date,Is Employee,Start Date,End Date,internal_loyalty_customer_id\n");
 
         for (Customer customer : customers) {
             csv.append(safe(customer.getDisplayId())).append(",")
-               .append(safe(customer.getName())).append(",")
-               .append(safe(customer.getPhone())).append(",")
-               .append(safe(customer.getEmail())).append(",")
-               .append(safe(customer.getSignUpDate())).append(",")
-               .append(safe(customer.getEarnedPoints())).append(",")
-               .append(safe(customer.getTotalVisits())).append(",")
-               .append(safe(customer.getTotalSpend())).append(",")
-               .append(safe(customer.getLastPurchaseDate())).append(",")
-               .append(safe(customer.isEmployee())).append(",")
-               .append(safe(customer.getStartDate())).append(",")
-               .append(safe(customer.getEndDate())).append(",")
-               .append(safe(customer.getInternalLoyaltyCustomerId())).append("\n");
+                    .append(safe(customer.getName())).append(",")
+                    .append(safe(customer.getPhone())).append(",")
+                    .append(safe(customer.getEmail())).append(",")
+                    .append(safe(customer.getSignUpDate())).append(",")
+                    .append(safe(customer.getEarnedPoints())).append(",")
+                    .append(safe(customer.getTotalVisits())).append(",")
+                    .append(safe(customer.getTotalSpend())).append(",")
+                    .append(safe(customer.getLastPurchaseDate())).append(",")
+                    .append(safe(customer.isEmployee())).append(",")
+                    .append(safe(customer.getStartDate())).append(",")
+                    .append(safe(customer.getEndDate())).append(",")
+                    .append(safe(customer.getInternalLoyaltyCustomerId())).append("\n");
         }
 
         response.getWriter().write(csv.toString());
@@ -164,7 +178,8 @@ public class CustomerController {
     @PostMapping("/customers/upload-csv")
     public ResponseEntity<List<Customer>> uploadCSV(@RequestParam("file") MultipartFile file) {
         List<Customer> customers = new ArrayList<>();
-        if (file.isEmpty()) return ResponseEntity.badRequest().build();
+        if (file.isEmpty())
+            return ResponseEntity.badRequest().build();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             String line;
@@ -172,9 +187,13 @@ public class CustomerController {
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
             while ((line = reader.readLine()) != null) {
-                if (isHeader) { isHeader = false; continue; }
+                if (isHeader) {
+                    isHeader = false;
+                    continue;
+                }
                 String[] columns = line.split(",", -1);
-                if (columns.length < 13) continue;
+                if (columns.length < 13)
+                    continue;
 
                 try {
                     Customer customer = new Customer();
@@ -209,19 +228,34 @@ public class CustomerController {
     }
 
     private LocalDate parseDate(String dateStr, DateTimeFormatter formatter) {
-        if (dateStr == null || dateStr.isEmpty()) return null;
-        try { return LocalDate.parse(dateStr, formatter); } 
-        catch (DateTimeParseException e) { return null; }
+        if (dateStr == null || dateStr.isEmpty())
+            return null;
+        try {
+            return LocalDate.parse(dateStr, formatter);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
-    private String safe(Object val) { return val == null ? "" : val.toString(); }
+    private String safe(Object val) {
+        return val == null ? "" : val.toString();
+    }
 
     private static class ApiResponse {
         private final String message;
         private final Object data;
 
-        public ApiResponse(String message, Object data) { this.message = message; this.data = data; }
-        public String getMessage() { return message; }
-        public Object getData() { return data; }
+        public ApiResponse(String message, Object data) {
+            this.message = message;
+            this.data = data;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public Object getData() {
+            return data;
+        }
     }
 }
