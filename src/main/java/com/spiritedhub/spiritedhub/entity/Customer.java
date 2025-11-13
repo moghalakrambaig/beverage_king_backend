@@ -1,6 +1,7 @@
 package com.spiritedhub.spiritedhub.entity;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -17,16 +18,16 @@ public class Customer {
     private String phone;
     private String email;
     private LocalDate signUpDate;
-    private String currentRank; 
+    private String currentRank;
 
     @Column(nullable = false)
-    private int earnedPoints = 0; // default 0
+    private int earnedPoints = 0;
 
     @Column(nullable = false)
-    private int totalVisits = 0; // default 0
+    private int totalVisits = 0;
 
     @Column(nullable = false)
-    private double totalSpend = 0.0; // default 0.0
+    private double totalSpend = 0.0;
 
     private LocalDate lastPurchaseDate;
 
@@ -36,11 +37,13 @@ public class Customer {
     private LocalDate startDate;
     private LocalDate endDate;
 
-    // internal_loyalty_customer_id from CSV
     private String internalLoyaltyCustomerId;
 
-    // Password for login
     private String password;
+
+    // ✅ Add these for Forgot Password functionality
+    private String resetPasswordToken;
+    private Instant resetPasswordExpiry;
 
     // ======================
     // Getters and Setters
@@ -172,5 +175,21 @@ public class Customer {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getResetPasswordToken() {
+        return resetPasswordToken;
+    }
+
+    public void setResetPasswordToken(String resetPasswordToken) {
+        this.resetPasswordToken = resetPasswordToken;
+    }
+
+    public Instant getResetPasswordExpiry() {
+        return resetPasswordExpiry;
+    }
+
+    public void setResetPasswordExpiry(Instant resetPasswordExpiry) {
+        this.resetPasswordExpiry = resetPasswordExpiry;
     }
 }

@@ -1,7 +1,9 @@
 package com.spiritedhub.spiritedhub.controller;
 
 import com.spiritedhub.spiritedhub.entity.Admin;
+import com.spiritedhub.spiritedhub.entity.Customer;
 import com.spiritedhub.spiritedhub.repository.AdminRepository;
+import com.spiritedhub.spiritedhub.repository.CustomerRepository;
 import com.spiritedhub.spiritedhub.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,9 @@ public class AuthController {
     private AdminRepository adminRepository;
 
     @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -31,48 +36,73 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
 
+        // 1️⃣ Try Admin
         Optional<Admin> adminOpt = adminRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
-
-            // Generate token and set expiry
             String token = UUID.randomUUID().toString();
             admin.setResetPasswordToken(token);
-            admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour expiry
+            admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
             adminRepository.save(admin);
 
-            // Send reset email
             String resetLink = "http://localhost:8080/reset-password?token=" + token;
             emailService.sendEmail(admin.getEmail(), "Admin Password Reset",
-                    "Click this link to reset your password: " + resetLink);
+                    "Click this link to reset your admin password: " + resetLink);
         }
 
-        // Always return success (prevent email enumeration)
+        // 2️⃣ Try Customer
+        Optional<Customer> customerOpt = customerRepository.findByEmail(email);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+            String token = UUID.randomUUID().toString();
+            customer.setResetPasswordToken(token);
+            customer.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
+            customerRepository.save(customer);
+
+            String resetLink = "http://localhost:8080/reset-password?token=" + token;
+            emailService.sendEmail(customer.getEmail(), "Customer Password Reset",
+                    "Click this link to reset your customer account password: " + resetLink);
+        }
+
+        // Always return success (avoid email enumeration)
         return ResponseEntity.ok(Map.of("message", "If this email exists, a reset link has been sent."));
     }
 
     // ================= Reset Password =================
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
-        Optional<Admin> adminOpt = adminRepository.findByResetPasswordToken(request.getToken());
+        String token = request.getToken();
+        String newPassword = request.getNewPassword();
 
-        if (adminOpt.isEmpty()) {
-            return ResponseEntity.ok(Map.of("message", "Invalid or expired token"));
+        // 1️⃣ Try Admin reset
+        Optional<Admin> adminOpt = adminRepository.findByResetPasswordToken(token);
+        if (adminOpt.isPresent()) {
+            Admin admin = adminOpt.get();
+            if (admin.getResetPasswordExpiry().isBefore(Instant.now())) {
+                return ResponseEntity.ok(Map.of("message", "Token has expired"));
+            }
+            admin.setPassword(passwordEncoder.encode(newPassword));
+            admin.setResetPasswordToken(null);
+            admin.setResetPasswordExpiry(null);
+            adminRepository.save(admin);
+            return ResponseEntity.ok(Map.of("message", "Admin password reset successfully"));
         }
 
-        Admin admin = adminOpt.get();
-
-        if (admin.getResetPasswordExpiry().isBefore(Instant.now())) {
-            return ResponseEntity.ok(Map.of("message", "Token has expired"));
+        // 2️⃣ Try Customer reset
+        Optional<Customer> customerOpt = customerRepository.findByResetPasswordToken(token);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+            if (customer.getResetPasswordExpiry().isBefore(Instant.now())) {
+                return ResponseEntity.ok(Map.of("message", "Token has expired"));
+            }
+            customer.setPassword(passwordEncoder.encode(newPassword));
+            customer.setResetPasswordToken(null);
+            customer.setResetPasswordExpiry(null);
+            customerRepository.save(customer);
+            return ResponseEntity.ok(Map.of("message", "Customer password reset successfully"));
         }
 
-        // Update password and clear token & expiry
-        admin.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        admin.setResetPasswordToken(null);
-        admin.setResetPasswordExpiry(null);
-        adminRepository.save(admin);
-
-        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+        return ResponseEntity.ok(Map.of("message", "Invalid or expired token"));
     }
 
     // ================= Request DTO =================
