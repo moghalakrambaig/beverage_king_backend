@@ -9,6 +9,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -46,7 +47,7 @@ public class CustomerController {
         }
 
         if (customer.getSignUpDate() == null) {
-            customer.setSignUpDate(LocalDate.now());
+            customer.setSignUpDate(Instant.now());
         }
 
         Customer savedCustomer = customerRepository.save(customer);
@@ -97,6 +98,7 @@ public class CustomerController {
         }
 
         Customer customer = customerOpt.get();
+        customer.setCurrentRank(customerDetails.getCurrentRank());
         customer.setDisplayId(customerDetails.getDisplayId());
         customer.setName(customerDetails.getName());
         customer.setPhone(customerDetails.getPhone());
@@ -154,7 +156,8 @@ public class CustomerController {
                 "Display ID,Name,Phone,Email,Sign Up Date,Earned Points,Total Visits,Total Spend,Last Purchase Date,Is Employee,Start Date,End Date,internal_loyalty_customer_id\n");
 
         for (Customer customer : customers) {
-            csv.append(safe(customer.getDisplayId())).append(",")
+            csv.append(safe(customer.getCurrentRank())).append(",")
+                    .append(safe(customer.getDisplayId())).append(",")
                     .append(safe(customer.getName())).append(",")
                     .append(safe(customer.getPhone())).append(",")
                     .append(safe(customer.getEmail())).append(",")
@@ -197,25 +200,26 @@ public class CustomerController {
 
                 try {
                     Customer customer = new Customer();
-                    customer.setDisplayId(columns[0]);
-                    customer.setName(columns[1]);
-                    customer.setPhone(columns[2]);
-                    customer.setEmail(columns[3]);
-                    customer.setSignUpDate(parseDate(columns[4], dateFormatter));
-                    customer.setEarnedPoints(columns[5].isEmpty() ? 0 : Integer.parseInt(columns[5]));
-                    customer.setTotalVisits(columns[6].isEmpty() ? 0 : Integer.parseInt(columns[6]));
-                    customer.setTotalSpend(columns[7].isEmpty() ? 0.0 : Double.parseDouble(columns[7]));
-                    customer.setLastPurchaseDate(parseDate(columns[8], dateFormatter));
-                    customer.setEmployee(columns[9].equalsIgnoreCase("true"));
-                    customer.setStartDate(parseDate(columns[10], dateFormatter));
-                    customer.setEndDate(parseDate(columns[11], dateFormatter));
-                    customer.setInternalLoyaltyCustomerId(columns[12]);
+                    customer.setCurrentRank(columns[0]);
+                    customer.setDisplayId(columns[1]);
+                    customer.setName(columns[2]);
+                    customer.setPhone(columns[3]);
+                    customer.setEmail(columns[4]);
+                    customer.setSignUpDate(parseInstant(columns[5]));
+                    customer.setEarnedPoints(columns[6].isEmpty() ? 0 : Integer.parseInt(columns[6]));
+                    customer.setTotalVisits(columns[7].isEmpty() ? 0 : Integer.parseInt(columns[7]));
+                    customer.setTotalSpend(columns[8].isEmpty() ? 0.0 : Double.parseDouble(columns[8]));
+                    customer.setLastPurchaseDate(parseInstant(columns[9]));
+                    customer.setEmployee(columns[10].equalsIgnoreCase("true"));
+                    customer.setStartDate(parseInstant(columns[11]));
+                    customer.setEndDate(parseInstant(columns[12]));
+                    customer.setInternalLoyaltyCustomerId(columns[13]);
                     customer.setPassword(passwordEncoder.encode("defaultPassword"));
-
                     customers.add(customer);
                 } catch (Exception e) {
                     System.out.println("Skipping row due to parsing error: " + line);
                 }
+
             }
 
             customerRepository.saveAll(customers);
@@ -225,16 +229,11 @@ public class CustomerController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
 
-    private LocalDate parseDate(String dateStr, DateTimeFormatter formatter) {
-        if (dateStr == null || dateStr.isEmpty())
-            return null;
-        try {
-            return LocalDate.parse(dateStr, formatter);
-        } catch (DateTimeParseException e) {
-            return null;
-        }
+    }
+      private Instant parseInstant(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return null;
+        return Instant.parse(dateStr); // parses ISO-8601
     }
 
     private String safe(Object val) {

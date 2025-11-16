@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class CustomerService {
                     customer.setEmail(nextLine[4]);
 
                     // Sign Up Date
-                    customer.setSignUpDate(parseDateSafe(nextLine[5]));
+                    customer.setSignUpDate(parseInstant(nextLine[5]));
 
                     // Numeric fields
                     customer.setEarnedPoints(parseIntSafe(nextLine[6]));
@@ -64,14 +65,14 @@ public class CustomerService {
                     customer.setTotalSpend(parseDoubleSafe(nextLine[8]));
 
                     // Last Purchase Date
-                    customer.setLastPurchaseDate(parseDateSafe(nextLine[9]));
+                    customer.setLastPurchaseDate(parseInstant(nextLine[9]));
 
                     // Is Employee
                     customer.setEmployee(Boolean.parseBoolean(nextLine[10].trim()));
 
                     // Start and End Dates
-                    customer.setStartDate(parseDateSafe(nextLine[11]));
-                    customer.setEndDate(parseDateSafe(nextLine[12]));
+                    customer.setStartDate(parseInstant(nextLine[11]));
+                    customer.setEndDate(parseInstant(nextLine[12]));
 
                     // Internal Loyalty Customer ID
                     customer.setInternalLoyaltyCustomerId(nextLine[13]);
@@ -110,9 +111,16 @@ public class CustomerService {
         }
     }
 
+    private Instant parseInstant(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty())
+            return null;
+        return Instant.parse(dateStr); // parses ISO-8601
+    }
+
     private LocalDate parseDateSafe(String value) {
         try {
-            if (value == null || value.isEmpty()) return null;
+            if (value == null || value.isEmpty())
+                return null;
             return LocalDate.parse(value.trim(), DATE_FORMATTER);
         } catch (Exception e) {
             return null;
