@@ -45,7 +45,7 @@ public class AuthController {
             admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
             adminRepository.save(admin);
 
-            String resetLink = "http://localhost:8080/reset-password?token=" + token;
+            String resetLink = "http://localhost:5173/reset-password?token=" + token;
             emailService.sendEmail(admin.getEmail(), "Admin Password Reset",
                     "Click this link to reset your admin password: " + resetLink);
         }
@@ -59,7 +59,7 @@ public class AuthController {
             customer.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
             customerRepository.save(customer);
 
-            String resetLink = "http://localhost:8080/reset-password?token=" + token;
+            String resetLink = "http://localhost:5173/reset-password?token=" + token;
             emailService.sendEmail(customer.getEmail(), "Customer Password Reset",
                     "Click this link to reset your customer account password: " + resetLink);
         }

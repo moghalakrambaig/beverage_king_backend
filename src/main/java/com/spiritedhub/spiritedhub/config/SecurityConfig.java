@@ -4,7 +4,9 @@ import com.spiritedhub.spiritedhub.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,18 +31,15 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(request -> {
                 var config = new org.springframework.web.cors.CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080"));
+                config.setAllowedOrigins(List.of("http://localhost:5173"));
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
                 return config;
             }))
-            // Use session management
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
                 .requestMatchers("/api/auth/**", "/api/customers/**").permitAll()
-                // All other requests need authentication
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -54,19 +53,25 @@ public class SecurityConfig {
                 .logoutUrl("/api/auth/logout")
                 .logoutSuccessHandler((req, res, auth) -> res.setStatus(HttpStatus.OK.value()))
             )
-            // Return 401 for unauthenticated requests to protected endpoints
             .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
 
         return http.build();
     }
 
-    @SuppressWarnings("deprecation")
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
+    }
+
+    // Explicitly define AuthenticationManager to remove the warning
+    @Bean
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+        return http.getSharedObject(AuthenticationManagerBuilder.class)
+                   .authenticationProvider(authenticationProvider())
+                   .build();
     }
 
     @Bean

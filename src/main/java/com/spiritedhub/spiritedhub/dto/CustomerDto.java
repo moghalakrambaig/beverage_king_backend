@@ -4,32 +4,35 @@ import java.time.LocalDate;
 
 public class CustomerDto {
 
-    private Long id;                      // Database ID (Primary Key)
-    private String displayId;             // Display ID (for frontend or internal use)
-    private String name;                  // Customer name
-    private String phone;                 // Customer phone number
-    private String email;                 // Customer email
-    private LocalDate signUpDate;         // Date of signup
-    private int earnedPoints;             // Loyalty points earned
-    private int totalVisits;              // Total number of visits
-    private double totalSpend;            // Total money spent
-    private LocalDate lastPurchaseDate;   // Last purchase date
-    private boolean isEmployee;           // Employee flag
-    private LocalDate startDate;          // Start date (for employees or program start)
-    private LocalDate endDate;            // End date (if applicable)
+    private Long id;
+    private String currentRank; // Database ID (Primary Key)
+    private String displayId; // Display ID (for frontend or internal use)
+    private String name; // Customer name
+    private String phone; // Customer phone number
+    private String email; // Customer email
+    private LocalDate signUpDate; // Date of signup
+    private int earnedPoints; // Loyalty points earned
+    private int totalVisits; // Total number of visits
+    private double totalSpend; // Total money spent
+    private LocalDate lastPurchaseDate; // Last purchase date
+    private boolean isEmployee; // Employee flag
+    private LocalDate startDate; // Start date (for employees or program start)
+    private LocalDate endDate; // End date (if applicable)
     private String internalLoyaltyCustomerId; // Internal system reference
 
     // ==========================
     // Constructors
     // ==========================
 
-    public CustomerDto() {}
+    public CustomerDto() {
+    }
 
-    public CustomerDto(Long id, String displayId, String name, String phone, String email,
-                       LocalDate signUpDate, int earnedPoints, int totalVisits, double totalSpend,
-                       LocalDate lastPurchaseDate, boolean isEmployee, LocalDate startDate,
-                       LocalDate endDate, String internalLoyaltyCustomerId) {
+    public CustomerDto(Long id, String currentRank, String displayId, String name, String phone, String email,
+            LocalDate signUpDate, int earnedPoints, int totalVisits, double totalSpend,
+            LocalDate lastPurchaseDate, boolean isEmployee, LocalDate startDate,
+            LocalDate endDate, String internalLoyaltyCustomerId) {
         this.id = id;
+        this.currentRank = currentRank;
         this.displayId = displayId;
         this.name = name;
         this.phone = phone;
@@ -55,6 +58,14 @@ public class CustomerDto {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getCurrentRank() {
+        return currentRank;
+    }
+
+    public void setCurrentRank(String currentRank) {
+        this.currentRank = currentRank;
     }
 
     public String getDisplayId() {

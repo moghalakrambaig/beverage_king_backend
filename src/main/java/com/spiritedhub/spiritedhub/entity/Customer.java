@@ -12,37 +12,34 @@ public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    private String currentRank;
     private String displayId;
     private String name;
     private String phone;
     private String email;
-    private LocalDate signUpDate;
-    private String currentRank;
-
+    @Column(columnDefinition = "DATETIME(6)")
+    private Instant signUpDate;
     @Column(nullable = false)
     private int earnedPoints = 0;
-
     @Column(nullable = false)
     private int totalVisits = 0;
-
     @Column(nullable = false)
     private double totalSpend = 0.0;
-
-    private LocalDate lastPurchaseDate;
-
+    @Column(columnDefinition = "DATETIME(6)")
+    private Instant lastPurchaseDate;
     @JsonProperty("isEmployee")
     private boolean employee = false;
-
-    private LocalDate startDate;
-    private LocalDate endDate;
-
+    @Column(columnDefinition = "DATETIME(6)")
+    private Instant startDate;
+    @Column(columnDefinition = "DATETIME(6)")
+    private Instant endDate;
     private String internalLoyaltyCustomerId;
 
-    private String password;
-
     // ✅ Add these for Forgot Password functionality
+    private String password;
     private String resetPasswordToken;
+
+    @Column(columnDefinition = "DATETIME(6)")
     private Instant resetPasswordExpiry;
 
     // ======================
@@ -97,11 +94,11 @@ public class Customer {
         this.currentRank = currentRank;
     }
 
-    public LocalDate getSignUpDate() {
+    public Instant getSignUpDate() {
         return signUpDate;
     }
 
-    public void setSignUpDate(LocalDate signUpDate) {
+    public void setSignUpDate(Instant signUpDate) {
         this.signUpDate = signUpDate;
     }
 
@@ -129,11 +126,11 @@ public class Customer {
         this.totalSpend = (totalSpend != null) ? totalSpend : 0.0;
     }
 
-    public LocalDate getLastPurchaseDate() {
+    public Instant getLastPurchaseDate() {
         return lastPurchaseDate;
     }
 
-    public void setLastPurchaseDate(LocalDate lastPurchaseDate) {
+    public void setLastPurchaseDate(Instant lastPurchaseDate) {
         this.lastPurchaseDate = lastPurchaseDate;
     }
 
@@ -145,19 +142,19 @@ public class Customer {
         this.employee = employee;
     }
 
-    public LocalDate getStartDate() {
+    public Instant getStartDate() {
         return startDate;
     }
 
-    public void setStartDate(LocalDate startDate) {
+    public void setStartDate(Instant startDate) {
         this.startDate = startDate;
     }
 
-    public LocalDate getEndDate() {
+    public Instant getEndDate() {
         return endDate;
     }
 
-    public void setEndDate(LocalDate endDate) {
+    public void setEndDate(Instant endDate) {
         this.endDate = endDate;
     }
 
