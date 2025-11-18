@@ -6,7 +6,6 @@ import com.spiritedhub.spiritedhub.repository.AdminRepository;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
 import com.spiritedhub.spiritedhub.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -32,45 +31,40 @@ public class AuthController {
     @Autowired
     private EmailService emailService;
 
-    private String frontendUrl = "https://beverageking.vercel.app";
-
     // ================= Forgot Password =================
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
 
-        // Admin
-        adminRepository.findByEmail(email).ifPresent(admin -> {
+        // 1️⃣ Try Admin
+        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+        if (adminOpt.isPresent()) {
+            Admin admin = adminOpt.get();
             String token = UUID.randomUUID().toString();
             admin.setResetPasswordToken(token);
-            admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600));
+            admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
             adminRepository.save(admin);
 
-            String resetLink = frontendUrl + "/reset-password?token=" + token;
+            String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
+            emailService.sendEmail(admin.getEmail(), "Admin Password Reset",
+                    "Click this link to reset your admin password: " + resetLink);
+        }
 
-            emailService.sendEmail(
-                    admin.getEmail(),
-                    "Admin Password Reset",
-                    "<p>Click the link below to reset your admin password:</p>" +
-                            "<a href=\"" + resetLink + "\">Reset Password</a>");
-        });
-
-        // Customer
-        customerRepository.findByEmail(email).ifPresent(customer -> {
+        // 2️⃣ Try Customer
+        Optional<Customer> customerOpt = customerRepository.findByEmail(email);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
             String token = UUID.randomUUID().toString();
             customer.setResetPasswordToken(token);
-            customer.setResetPasswordExpiry(Instant.now().plusSeconds(3600));
+            customer.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
             customerRepository.save(customer);
 
-            String resetLink = frontendUrl + "/reset-password?token=" + token;
+            String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
+            emailService.sendEmail(customer.getEmail(), "Customer Password Reset",
+                    "Click this link to reset your customer account password: " + resetLink);
+        }
 
-            emailService.sendEmail(
-                    customer.getEmail(),
-                    "Customer Password Reset",
-                    "<p>Click the link below to reset your customer account password:</p>" +
-                            "<a href=\"" + resetLink + "\">Reset Password</a>");
-        });
-
+        // Always return success (avoid email enumeration)
         return ResponseEntity.ok(Map.of("message", "If this email exists, a reset link has been sent."));
     }
 
@@ -80,7 +74,7 @@ public class AuthController {
         String token = request.getToken();
         String newPassword = request.getNewPassword();
 
-        // Admin
+        // 1️⃣ Try Admin reset
         Optional<Admin> adminOpt = adminRepository.findByResetPasswordToken(token);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
@@ -94,7 +88,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Admin password reset successfully"));
         }
 
-        // Customer
+        // 2️⃣ Try Customer reset
         Optional<Customer> customerOpt = customerRepository.findByResetPasswordToken(token);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
