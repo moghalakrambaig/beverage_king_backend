@@ -1,62 +1,38 @@
 package com.spiritedhub.spiritedhub.dto;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 public class CustomerDto {
 
-    private Long id;
-    private String currentRank; // Database ID (Primary Key)
-    private String displayId; // Display ID (for frontend or internal use)
-    private String name; // Customer name
-    private String phone; // Customer phone number
-    private String email; // Customer email
-    private LocalDate signUpDate; // Date of signup
-    private int earnedPoints; // Loyalty points earned
-    private int totalVisits; // Total number of visits
-    private double totalSpend; // Total money spent
-    private LocalDate lastPurchaseDate; // Last purchase date
-    private boolean isEmployee; // Employee flag
-    private LocalDate startDate; // Start date (for employees or program start)
-    private LocalDate endDate; // End date (if applicable)
-    private String internalLoyaltyCustomerId; // Internal system reference
+    private String id;  // MongoDB uses String ObjectId
+    private String currentRank;
+    private String displayId;
+    private String name;
+    private String phone;
+    private String email;
+    private LocalDate signUpDate;
+    private int earnedPoints;
+    private int totalVisits;
+    private double totalSpend;
+    private LocalDate lastPurchaseDate;
+    private boolean isEmployee;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private String internalLoyaltyCustomerId;
 
-    // ==========================
-    // Constructors
-    // ==========================
+    // ✔ Added: Holds all dynamic CSV fields
+    private Map<String, Object> dynamicFields;
 
-    public CustomerDto() {
-    }
+    // =======================
+    // Getters & Setters
+    // =======================
 
-    public CustomerDto(Long id, String currentRank, String displayId, String name, String phone, String email,
-            LocalDate signUpDate, int earnedPoints, int totalVisits, double totalSpend,
-            LocalDate lastPurchaseDate, boolean isEmployee, LocalDate startDate,
-            LocalDate endDate, String internalLoyaltyCustomerId) {
-        this.id = id;
-        this.currentRank = currentRank;
-        this.displayId = displayId;
-        this.name = name;
-        this.phone = phone;
-        this.email = email;
-        this.signUpDate = signUpDate;
-        this.earnedPoints = earnedPoints;
-        this.totalVisits = totalVisits;
-        this.totalSpend = totalSpend;
-        this.lastPurchaseDate = lastPurchaseDate;
-        this.isEmployee = isEmployee;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.internalLoyaltyCustomerId = internalLoyaltyCustomerId;
-    }
-
-    // ==========================
-    // Getters and Setters
-    // ==========================
-
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -170,5 +146,13 @@ public class CustomerDto {
 
     public void setInternalLoyaltyCustomerId(String internalLoyaltyCustomerId) {
         this.internalLoyaltyCustomerId = internalLoyaltyCustomerId;
+    }
+
+    public Map<String, Object> getDynamicFields() {
+        return dynamicFields;
+    }
+
+    public void setDynamicFields(Map<String, Object> dynamicFields) {
+        this.dynamicFields = dynamicFields;
     }
 }

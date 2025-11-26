@@ -3,19 +3,25 @@ package com.spiritedhub.spiritedhub.controller;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.spiritedhub.spiritedhub.entity.Customer;
@@ -34,10 +40,11 @@ public class CustomerController {
     private PasswordEncoder passwordEncoder;
 
     // =========================
-    // SIGN UP - Create customer
+    // SIGN UP
     // =========================
     @PostMapping("/customers")
     public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
+
         if (customerRepository.findByEmail(customer.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body(new ApiResponse("Email already exists", null));
         }
@@ -51,19 +58,21 @@ public class CustomerController {
         }
 
         Customer savedCustomer = customerRepository.save(customer);
-
         return ResponseEntity.ok(new ApiResponse("Customer created successfully", savedCustomer));
     }
 
     // =========================
-    // CUSTOMER LOGIN
+    // LOGIN
     // =========================
     @PostMapping("/auth/customer-login")
     public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
         Optional<Customer> customerOpt = customerRepository.findByEmail(email);
-        if (customerOpt.isEmpty() || !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
+
+        if (customerOpt.isEmpty() ||
+                !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
             return ResponseEntity.status(401).body(new ApiResponse("Invalid credentials", null));
         }
+
         return ResponseEntity.ok(new ApiResponse("Login successful", customerOpt.get()));
     }
 
@@ -77,13 +86,15 @@ public class CustomerController {
 
     // =========================
     // GET CUSTOMER BY ID
+    // (Mongo uses String id)
     // =========================
     @GetMapping("/customers/{id}")
-    public ResponseEntity<?> getCustomerById(@PathVariable Long id) {
+    public ResponseEntity<?> getCustomerById(@PathVariable String id) {
+
         Optional<Customer> customerOpt = customerRepository.findById(id);
-        return customerOpt
-                .<ResponseEntity<?>>map(
-                        customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
+
+        return customerOpt.map(customer ->
+                        ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse("Customer not found", null)));
     }
 
@@ -91,13 +102,15 @@ public class CustomerController {
     // UPDATE CUSTOMER
     // =========================
     @PutMapping("/customers/{id}")
-    public ResponseEntity<?> updateCustomer(@PathVariable Long id, @RequestBody Customer customerDetails) {
+    public ResponseEntity<?> updateCustomer(@PathVariable String id, @RequestBody Customer customerDetails) {
+
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isEmpty()) {
             return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
 
         Customer customer = customerOpt.get();
+
         customer.setCurrentRank(customerDetails.getCurrentRank());
         customer.setDisplayId(customerDetails.getDisplayId());
         customer.setName(customerDetails.getName());
@@ -113,6 +126,9 @@ public class CustomerController {
         customer.setEndDate(customerDetails.getEndDate());
         customer.setInternalLoyaltyCustomerId(customerDetails.getInternalLoyaltyCustomerId());
 
+        // dynamic fields (new)
+        customer.setDynamicFields(customerDetails.getDynamicFields());
+
         if (customerDetails.getPassword() != null && !customerDetails.getPassword().isEmpty()) {
             customer.setPassword(passwordEncoder.encode(customerDetails.getPassword()));
         }
@@ -121,13 +137,14 @@ public class CustomerController {
     }
 
     // =========================
-    // DELETE CUSTOMER BY ID
+    // DELETE BY ID
     // =========================
     @DeleteMapping("/customers/{id}")
-    public ResponseEntity<?> deleteCustomer(@PathVariable Long id) {
+    public ResponseEntity<?> deleteCustomer(@PathVariable String id) {
         if (!customerRepository.existsById(id)) {
             return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
+
         customerRepository.deleteById(id);
         return ResponseEntity.ok(new ApiResponse("Customer deleted successfully", null));
     }
@@ -144,96 +161,104 @@ public class CustomerController {
     }
 
     // =========================
-    // EXPORT CUSTOMERS TO CSV
+    // EXPORT
     // =========================
     @GetMapping("/customers/export")
     public void exportCustomers(HttpServletResponse response) throws IOException {
+
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"customers.csv\"");
 
         List<Customer> customers = customerRepository.findAll();
-        StringBuilder csv = new StringBuilder(
-                "Display ID,Name,Phone,Email,Sign Up Date,Earned Points,Total Visits,Total Spend,Last Purchase Date,Is Employee,Start Date,End Date,internal_loyalty_customer_id\n");
 
-        for (Customer customer : customers) {
-            csv.append(safe(customer.getCurrentRank())).append(",")
-                    .append(safe(customer.getDisplayId())).append(",")
-                    .append(safe(customer.getName())).append(",")
-                    .append(safe(customer.getPhone())).append(",")
-                    .append(safe(customer.getEmail())).append(",")
-                    .append(safe(customer.getSignUpDate())).append(",")
-                    .append(safe(customer.getEarnedPoints())).append(",")
-                    .append(safe(customer.getTotalVisits())).append(",")
-                    .append(safe(customer.getTotalSpend())).append(",")
-                    .append(safe(customer.getLastPurchaseDate())).append(",")
-                    .append(safe(customer.isEmployee())).append(",")
-                    .append(safe(customer.getStartDate())).append(",")
-                    .append(safe(customer.getEndDate())).append(",")
-                    .append(safe(customer.getInternalLoyaltyCustomerId())).append("\n");
+        StringBuilder csv = new StringBuilder(
+                "CurrentRank,DisplayID,Name,Phone,Email,SignUpDate,EarnedPoints,TotalVisits,TotalSpend,LastPurchase,IsEmployee,StartDate,EndDate,InternalID\n");
+
+        for (Customer c : customers) {
+            csv.append(safe(c.getCurrentRank())).append(",")
+                    .append(safe(c.getDisplayId())).append(",")
+                    .append(safe(c.getName())).append(",")
+                    .append(safe(c.getPhone())).append(",")
+                    .append(safe(c.getEmail())).append(",")
+                    .append(safe(c.getSignUpDate())).append(",")
+                    .append(safe(c.getEarnedPoints())).append(",")
+                    .append(safe(c.getTotalVisits())).append(",")
+                    .append(safe(c.getTotalSpend())).append(",")
+                    .append(safe(c.getLastPurchaseDate())).append(",")
+                    .append(safe(c.isEmployee())).append(",")
+                    .append(safe(c.getStartDate())).append(",")
+                    .append(safe(c.getEndDate())).append(",")
+                    .append(safe(c.getInternalLoyaltyCustomerId())).append("\n");
         }
 
         response.getWriter().write(csv.toString());
     }
 
     // =========================
-    // UPLOAD CUSTOMERS VIA CSV
+    // CSV UPLOAD
     // =========================
     @PostMapping("/customers/upload-csv")
     public ResponseEntity<List<Customer>> uploadCSV(@RequestParam("file") MultipartFile file) {
+
         List<Customer> customers = new ArrayList<>();
+
         if (file.isEmpty())
             return ResponseEntity.badRequest().build();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+
             String line;
             boolean isHeader = true;
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
             while ((line = reader.readLine()) != null) {
+
                 if (isHeader) {
                     isHeader = false;
                     continue;
                 }
+
                 String[] columns = line.split(",", -1);
+
                 if (columns.length < 13)
                     continue;
 
                 try {
-                    Customer customer = new Customer();
-                    customer.setCurrentRank(columns[0]);
-                    customer.setDisplayId(columns[1]);
-                    customer.setName(columns[2]);
-                    customer.setPhone(columns[3]);
-                    customer.setEmail(columns[4]);
-                    customer.setSignUpDate(parseInstant(columns[5]));
-                    customer.setEarnedPoints(columns[6].isEmpty() ? 0 : Integer.parseInt(columns[6]));
-                    customer.setTotalVisits(columns[7].isEmpty() ? 0 : Integer.parseInt(columns[7]));
-                    customer.setTotalSpend(columns[8].isEmpty() ? 0.0 : Double.parseDouble(columns[8]));
-                    customer.setLastPurchaseDate(parseInstant(columns[9]));
-                    customer.setEmployee(columns[10].equalsIgnoreCase("true"));
-                    customer.setStartDate(parseInstant(columns[11]));
-                    customer.setEndDate(parseInstant(columns[12]));
-                    customer.setInternalLoyaltyCustomerId(columns[13]);
-                    customer.setPassword(passwordEncoder.encode("defaultPassword"));
-                    customers.add(customer);
-                } catch (Exception e) {
-                    System.out.println("Skipping row due to parsing error: " + line);
-                }
+                    Customer c = new Customer();
+                    c.setCurrentRank(columns[0]);
+                    c.setDisplayId(columns[1]);
+                    c.setName(columns[2]);
+                    c.setPhone(columns[3]);
+                    c.setEmail(columns[4]);
+                    c.setSignUpDate(parseInstant(columns[5]));
+                    c.setEarnedPoints(columns[6].isEmpty() ? 0 : Integer.parseInt(columns[6]));
+                    c.setTotalVisits(columns[7].isEmpty() ? 0 : Integer.parseInt(columns[7]));
+                    c.setTotalSpend(columns[8].isEmpty() ? 0 : Double.parseDouble(columns[8]));
+                    c.setLastPurchaseDate(parseInstant(columns[9]));
+                    c.setEmployee(columns[10].equalsIgnoreCase("true"));
+                    c.setStartDate(parseInstant(columns[11]));
+                    c.setEndDate(parseInstant(columns[12]));
+                    c.setInternalLoyaltyCustomerId(columns[13]);
+                    c.setPassword(passwordEncoder.encode("defaultPassword"));
 
+                    customers.add(c);
+                } catch (Exception ex) {
+                    System.out.println("Skipping invalid row: " + line);
+                }
             }
 
             customerRepository.saveAll(customers);
             return ResponseEntity.ok(customers);
 
         } catch (IOException e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-
     }
-      private Instant parseInstant(String dateStr) {
+
+    // Helpers =========================
+
+    private Instant parseInstant(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) return null;
-        return Instant.parse(dateStr); // parses ISO-8601
+        return Instant.parse(dateStr);
     }
 
     private String safe(Object val) {
@@ -249,12 +274,8 @@ public class CustomerController {
             this.data = data;
         }
 
-        public String getMessage() {
-            return message;
-        }
+        public String getMessage() { return message; }
 
-        public Object getData() {
-            return data;
-        }
+        public Object getData() { return data; }
     }
 }

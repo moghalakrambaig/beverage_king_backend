@@ -1,56 +1,56 @@
 package com.spiritedhub.spiritedhub.entity;
 
-import jakarta.persistence.*;
-import java.time.Instant;
-import java.time.LocalDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Entity
-@Table(name = "customers")
+import java.time.Instant;
+import java.util.Map;
+
+@Document(collection = "customers")
 public class Customer {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;  // MongoDB uses String IDs
+
     private String currentRank;
     private String displayId;
     private String name;
     private String phone;
     private String email;
-    @Column(columnDefinition = "DATETIME(6)")
+
     private Instant signUpDate;
-    @Column(nullable = false)
     private int earnedPoints = 0;
-    @Column(nullable = false)
     private int totalVisits = 0;
-    @Column(nullable = false)
     private double totalSpend = 0.0;
-    @Column(columnDefinition = "DATETIME(6)")
+
     private Instant lastPurchaseDate;
+
     @JsonProperty("isEmployee")
     private boolean employee = false;
-    @Column(columnDefinition = "DATETIME(6)")
+
     private Instant startDate;
-    @Column(columnDefinition = "DATETIME(6)")
     private Instant endDate;
+
     private String internalLoyaltyCustomerId;
 
-    // ✅ Add these for Forgot Password functionality
+    // For password reset
     private String password;
     private String resetPasswordToken;
-
-    @Column(columnDefinition = "DATETIME(6)")
     private Instant resetPasswordExpiry;
+
+    // 🔥 DYNAMIC FIELDS for CSV upload
+    private Map<String, Object> dynamicFields;
 
     // ======================
     // Getters and Setters
     // ======================
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -188,5 +188,13 @@ public class Customer {
 
     public void setResetPasswordExpiry(Instant resetPasswordExpiry) {
         this.resetPasswordExpiry = resetPasswordExpiry;
+    }
+
+    public Map<String, Object> getDynamicFields() {
+        return dynamicFields;
+    }
+
+    public void setDynamicFields(Map<String, Object> dynamicFields) {
+        this.dynamicFields = dynamicFields;
     }
 }

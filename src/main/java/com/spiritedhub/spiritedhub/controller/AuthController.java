@@ -74,17 +74,22 @@ public class AuthController {
         String token = request.getToken();
         String newPassword = request.getNewPassword();
 
+        Instant now = Instant.now();
+
         // 1️⃣ Try Admin reset
         Optional<Admin> adminOpt = adminRepository.findByResetPasswordToken(token);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
-            if (admin.getResetPasswordExpiry().isBefore(Instant.now())) {
+
+            if (admin.getResetPasswordExpiry() == null || admin.getResetPasswordExpiry().isBefore(now)) {
                 return ResponseEntity.ok(Map.of("message", "Token has expired"));
             }
+
             admin.setPassword(passwordEncoder.encode(newPassword));
             admin.setResetPasswordToken(null);
             admin.setResetPasswordExpiry(null);
             adminRepository.save(admin);
+
             return ResponseEntity.ok(Map.of("message", "Admin password reset successfully"));
         }
 
@@ -92,13 +97,16 @@ public class AuthController {
         Optional<Customer> customerOpt = customerRepository.findByResetPasswordToken(token);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
-            if (customer.getResetPasswordExpiry().isBefore(Instant.now())) {
+
+            if (customer.getResetPasswordExpiry() == null || customer.getResetPasswordExpiry().isBefore(now)) {
                 return ResponseEntity.ok(Map.of("message", "Token has expired"));
             }
+
             customer.setPassword(passwordEncoder.encode(newPassword));
             customer.setResetPasswordToken(null);
             customer.setResetPasswordExpiry(null);
             customerRepository.save(customer);
+
             return ResponseEntity.ok(Map.of("message", "Customer password reset successfully"));
         }
 

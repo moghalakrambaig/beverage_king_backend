@@ -1,23 +1,27 @@
 package com.spiritedhub.spiritedhub.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "admin")
+import java.time.Instant;
+import java.util.Map;
+
+@Document(collection = "admin")
 public class Admin {
 
     @Id
-    private String email;
+    private String email;   // Primary key
+
     private String password;
 
-    // New fields for password reset
     private String resetPasswordToken;
     private Instant resetPasswordExpiry;
 
+    // 🔥 Dynamic fields for any CSV column or extra data
+    private Map<String, Object> dynamicFields;
+
     // ===== Getters & Setters =====
+
     public String getEmail() {
         return email;
     }
@@ -48,5 +52,13 @@ public class Admin {
 
     public void setResetPasswordExpiry(Instant resetPasswordExpiry) {
         this.resetPasswordExpiry = resetPasswordExpiry;
+    }
+
+    public Map<String, Object> getDynamicFields() {
+        return dynamicFields;
+    }
+
+    public void setDynamicFields(Map<String, Object> dynamicFields) {
+        this.dynamicFields = dynamicFields;
     }
 }

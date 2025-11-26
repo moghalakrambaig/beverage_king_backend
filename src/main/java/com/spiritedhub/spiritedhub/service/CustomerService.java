@@ -12,10 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class CustomerService {
@@ -26,65 +23,54 @@ public class CustomerService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
     /**
-     * Save customers imported from CSV file
+     * Save customers imported from CSV dynamically
+     * ANY column will be saved automatically in dynamicFields
      */
-    public List<Customer> saveCustomersFromCsv(MultipartFile file) throws IOException, CsvValidationException {
+    public List<Customer> saveCustomersFromCsv(MultipartFile file)
+            throws IOException, CsvValidationException {
+
         List<Customer> customers = new ArrayList<>();
 
-        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
-            String[] nextLine;
-            reader.readNext(); // skip header row
+        try (CSVReader reader =
+                     new CSVReader(new InputStreamReader(file.getInputStream()))) {
 
-            while ((nextLine = reader.readNext()) != null) {
-                try {
-                    if (nextLine.length < 14) {
-                        System.err.println("Skipping row due to insufficient columns: " + String.join(",", nextLine));
-                        continue;
+            String[] headerRow = reader.readNext(); // read column names
+            if (headerRow == null) return customers;
+
+            while (true) {
+                String[] row = reader.readNext();
+                if (row == null) break;
+
+                Customer customer = new Customer();
+                Map<String, Object> dynamic = new HashMap<>();
+
+                for (int i = 0; i < headerRow.length; i++) {
+                    String column = headerRow[i].trim();
+                    String value = i < row.length ? row[i].trim() : "";
+
+                    // ================================
+                    // Map known fields (optional)
+                    // CSV columns can be anything
+                    // ================================
+                    switch (column.toLowerCase()) {
+                        case "name" -> customer.setName(value);
+                        case "phone" -> customer.setPhone(value);
+                        case "email" -> customer.setEmail(value);
+                        case "password" -> customer.setPassword(passwordEncoder.encode(value));
+                        case "signupdate" -> customer.setSignUpDate(parseInstant(value));
+                        default -> dynamic.put(column, parseValue(value));
                     }
-
-                    Customer customer = new Customer();
-
-                    // ✅ Column order: Current Rank, Display ID, Name, Phone, Email, Sign Up Date,
-                    // Earned Points, Total Visits, Total Spend, Last Purchase Date,
-                    // Is Employee, Start Date, End Date, internal_loyalty_customer_id
-                    customer.setId(Long.parseLong(nextLine[0]));
-                    customer.setCurrentRank(nextLine[1]);
-                    customer.setName(nextLine[2]);
-                    customer.setPhone(nextLine[3]);
-                    customer.setEmail(nextLine[4]);
-
-                    // Sign Up Date
-                    customer.setSignUpDate(parseInstant(nextLine[5]));
-
-                    // Numeric fields
-                    customer.setEarnedPoints(parseIntSafe(nextLine[6]));
-                    customer.setTotalVisits(parseIntSafe(nextLine[7]));
-                    customer.setTotalSpend(parseDoubleSafe(nextLine[8]));
-
-                    // Last Purchase Date
-                    customer.setLastPurchaseDate(parseInstant(nextLine[9]));
-
-                    // Is Employee
-                    customer.setEmployee(Boolean.parseBoolean(nextLine[10].trim()));
-
-                    // Start and End Dates
-                    customer.setStartDate(parseInstant(nextLine[11]));
-                    customer.setEndDate(parseInstant(nextLine[12]));
-
-                    // Internal Loyalty Customer ID
-                    customer.setInternalLoyaltyCustomerId(nextLine[13]);
-
-                    // Default encoded password
-                    customer.setPassword(passwordEncoder.encode("defaultPassword"));
-
-                    customers.add(customer);
-
-                } catch (Exception e) {
-                    System.err.println("Skipping row due to parsing error: " + String.join(",", nextLine));
                 }
+
+                // Default password if missing
+                if (customer.getPassword() == null) {
+                    customer.setPassword(passwordEncoder.encode("defaultPassword"));
+                }
+
+                customer.setDynamicFields(dynamic);
+
+                customers.add(customer);
             }
         }
 
@@ -95,35 +81,34 @@ public class CustomerService {
     // Helper Methods
     // ======================
 
-    private int parseIntSafe(String value) {
+    private Instant parseInstant(String value) {
         try {
-            return Integer.parseInt(value.trim());
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
-    private double parseDoubleSafe(String value) {
-        try {
-            return Double.parseDouble(value.trim());
-        } catch (Exception e) {
-            return 0.0;
-        }
-    }
-
-    private Instant parseInstant(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty())
-            return null;
-        return Instant.parse(dateStr); // parses ISO-8601
-    }
-
-    private LocalDate parseDateSafe(String value) {
-        try {
-            if (value == null || value.isEmpty())
-                return null;
-            return LocalDate.parse(value.trim(), DATE_FORMATTER);
+            return (value == null || value.isEmpty()) ? null : Instant.parse(value);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Auto-detect and convert numeric/boolean fields
+     */
+    private Object parseValue(String value) {
+        if (value == null || value.isEmpty()) return null;
+
+        // try integer
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception ignored) {}
+
+        // try decimal
+        try {
+            return Double.parseDouble(value);
+        } catch (Exception ignored) {}
+
+        // try boolean
+        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
+            return Boolean.parseBoolean(value);
+
+        return value; // fallback to string
     }
 }
