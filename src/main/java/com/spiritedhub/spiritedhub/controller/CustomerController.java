@@ -129,7 +129,7 @@ public class CustomerController {
     // =========================
     // CSV UPLOAD (Fully Dynamic)
     // =========================
-    @PostMapping("/upload-csv")
+    @PostMapping("/customers/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("File is empty");
