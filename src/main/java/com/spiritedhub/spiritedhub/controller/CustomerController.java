@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,8 +94,8 @@ public class CustomerController {
 
         Optional<Customer> customerOpt = customerRepository.findById(id);
 
-        return customerOpt.map(customer ->
-                        ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
+        return customerOpt
+                .map(customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse("Customer not found", null)));
     }
 
@@ -197,67 +198,104 @@ public class CustomerController {
     // =========================
     // CSV UPLOAD
     // =========================
-    @PostMapping("/customers/upload-csv")
-    public ResponseEntity<List<Customer>> uploadCSV(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/upload-csv")
+    public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is empty");
+        }
 
         List<Customer> customers = new ArrayList<>();
 
-        if (file.isEmpty())
-            return ResponseEntity.badRequest().build();
-
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null)
+                return ResponseEntity.badRequest().body("CSV has no header");
+
+            String[] headers = headerLine.split(",", -1);
 
             String line;
-            boolean isHeader = true;
-
             while ((line = reader.readLine()) != null) {
-
-                if (isHeader) {
-                    isHeader = false;
-                    continue;
-                }
-
                 String[] columns = line.split(",", -1);
+                Customer c = new Customer();
 
-                if (columns.length < 13)
-                    continue;
+                // map known fields if headers exist
+                for (int i = 0; i < columns.length; i++) {
+                    String key = headers[i].trim();
+                    String value = columns[i].trim();
 
-                try {
-                    Customer c = new Customer();
-                    c.setCurrentRank(columns[0]);
-                    c.setDisplayId(columns[1]);
-                    c.setName(columns[2]);
-                    c.setPhone(columns[3]);
-                    c.setEmail(columns[4]);
-                    c.setSignUpDate(parseInstant(columns[5]));
-                    c.setEarnedPoints(columns[6].isEmpty() ? 0 : Integer.parseInt(columns[6]));
-                    c.setTotalVisits(columns[7].isEmpty() ? 0 : Integer.parseInt(columns[7]));
-                    c.setTotalSpend(columns[8].isEmpty() ? 0 : Double.parseDouble(columns[8]));
-                    c.setLastPurchaseDate(parseInstant(columns[9]));
-                    c.setEmployee(columns[10].equalsIgnoreCase("true"));
-                    c.setStartDate(parseInstant(columns[11]));
-                    c.setEndDate(parseInstant(columns[12]));
-                    c.setInternalLoyaltyCustomerId(columns[13]);
-                    c.setPassword(passwordEncoder.encode("defaultPassword"));
-
-                    customers.add(c);
-                } catch (Exception ex) {
-                    System.out.println("Skipping invalid row: " + line);
+                    switch (key.toLowerCase()) {
+                        case "name":
+                            c.setName(value);
+                            break;
+                        case "email":
+                            c.setEmail(value);
+                            break;
+                        case "phone":
+                            c.setPhone(value);
+                            break;
+                        case "earnedpoints":
+                            c.setEarnedPoints(value.isEmpty() ? 0 : Integer.parseInt(value));
+                            break;
+                        case "totalvisits":
+                            c.setTotalVisits(value.isEmpty() ? 0 : Integer.parseInt(value));
+                            break;
+                        case "totalspend":
+                            c.setTotalSpend(value.isEmpty() ? 0.0 : Double.parseDouble(value));
+                            break;
+                        case "signupdate":
+                            c.setSignUpDate(parseInstant(value));
+                            break;
+                        case "lastpurchasedate":
+                            c.setLastPurchaseDate(parseInstant(value));
+                            break;
+                        case "isemployee":
+                            c.setEmployee(value.equalsIgnoreCase("true"));
+                            break;
+                        case "currentrank":
+                            c.setCurrentRank(value);
+                            break;
+                        case "displayid":
+                            c.setDisplayId(value);
+                            break;
+                        case "startdate":
+                            c.setStartDate(parseInstant(value));
+                            break;
+                        case "enddate":
+                            c.setEndDate(parseInstant(value));
+                            break;
+                        case "internalloyaltycustomerid":
+                            c.setInternalLoyaltyCustomerId(value);
+                            break;
+                        default:
+                            // dynamic fields
+                            if (c.getDynamicFields() == null)
+                                c.setDynamicFields(new HashMap<>());
+                            c.getDynamicFields().put(key, value);
+                            break;
+                    }
                 }
+
+                // default password if not present
+                c.setPassword(passwordEncoder.encode("defaultPassword"));
+
+                customers.add(c);
             }
 
             customerRepository.saveAll(customers);
             return ResponseEntity.ok(customers);
 
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload CSV: " + e.getMessage());
         }
     }
 
     // Helpers =========================
 
     private Instant parseInstant(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) return null;
+        if (dateStr == null || dateStr.isEmpty())
+            return null;
         return Instant.parse(dateStr);
     }
 
@@ -274,8 +312,12 @@ public class CustomerController {
             this.data = data;
         }
 
-        public String getMessage() { return message; }
+        public String getMessage() {
+            return message;
+        }
 
-        public Object getData() { return data; }
+        public Object getData() {
+            return data;
+        }
     }
 }
