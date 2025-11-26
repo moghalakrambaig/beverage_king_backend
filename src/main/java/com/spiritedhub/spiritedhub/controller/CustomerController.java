@@ -131,53 +131,54 @@ public class CustomerController {
     // =========================
     @PostMapping("/customers/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
+        if (file.isEmpty())
             return ResponseEntity.badRequest().body("File is empty");
-        }
 
         List<Customer> customers = new ArrayList<>();
 
-        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null)
+                return ResponseEntity.badRequest().body("CSV has no header");
 
-            // Read headers
-            String[] headers = reader.readNext();
-            if (headers == null) {
-                return ResponseEntity.badRequest().body("CSV has no header row");
-            }
+            String[] headers = headerLine.split(",", -1);
 
-            String[] row;
-            while ((row = reader.readNext()) != null) {
-
-                Customer customer = new Customer();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split(",", -1);
+                Customer c = new Customer();
                 Map<String, Object> dynamicFields = new HashMap<>();
 
                 for (int i = 0; i < headers.length; i++) {
                     String key = headers[i].trim();
-                    String value = (i < row.length) ? row[i].trim() : "";
+                    String value = i < columns.length ? columns[i].trim() : "";
 
+                    // Password is special
                     if (key.equalsIgnoreCase("password")) {
-                        customer.setPassword(
-                                passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
+                        c.setPassword(passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
                         continue;
                     }
 
-                    dynamicFields.put(key, parseValue(value));
+                    // Add all other columns to dynamicFields
+                    dynamicFields.put(key, value);
                 }
 
-                if (customer.getPassword() == null) {
-                    customer.setPassword(passwordEncoder.encode("defaultPassword"));
+                // Default password if missing
+                if (c.getPassword() == null) {
+                    c.setPassword(passwordEncoder.encode("defaultPassword"));
                 }
 
-                customer.setDynamicFields(dynamicFields);
-                customers.add(customer);
+                c.setDynamicFields(dynamicFields);
+                customers.add(c);
             }
 
             customerRepository.saveAll(customers);
             return ResponseEntity.ok(customers);
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Upload failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload CSV: " + e.getMessage());
         }
     }
 
