@@ -1,5 +1,6 @@
 package com.spiritedhub.spiritedhub.controller;
 
+import com.opencsv.CSVReader;
 import com.spiritedhub.spiritedhub.entity.Customer;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -130,51 +131,66 @@ public class CustomerController {
     // =========================
     @PostMapping("/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) return ResponseEntity.badRequest().body("File is empty");
+        if (file.isEmpty())
+            return ResponseEntity.badRequest().body("File is empty");
 
         List<Customer> customers = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) return ResponseEntity.badRequest().body("CSV has no header");
+        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
 
-            String[] headers = headerLine.split(",", -1);
+            String[] headers = reader.readNext();
+            if (headers == null)
+                return ResponseEntity.badRequest().body("CSV has no header");
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] columns = line.split(",", -1);
-                Customer c = new Customer();
+            String[] row;
+            while ((row = reader.readNext()) != null) {
+                Customer customer = new Customer();
                 Map<String, Object> dynamicFields = new HashMap<>();
 
-                for (int i = 0; i < columns.length; i++) {
+                for (int i = 0; i < headers.length; i++) {
                     String key = headers[i].trim();
-                    String value = columns[i].trim();
+                    String value = (i < row.length) ? row[i].trim() : "";
 
-                    dynamicFields.put(key, value);
+                    if (key.equalsIgnoreCase("password")) {
+                        customer.setPassword(passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
+                        continue;
+                    }
 
-                    // Treat email & password specially
-                    if (key.equalsIgnoreCase("email")) c.setDynamicFields(dynamicFields);
-                    if (key.equalsIgnoreCase("password")) c.setPassword(passwordEncoder.encode(value));
+                    dynamicFields.put(key, parseValue(value));
                 }
 
-                // Default password if not provided
-                if (c.getPassword() == null)
-                    c.setPassword(passwordEncoder.encode("defaultPassword"));
+                if (customer.getPassword() == null)
+                    customer.setPassword(passwordEncoder.encode("defaultPassword"));
 
-                if (c.getDynamicFields() == null)
-                    c.setDynamicFields(dynamicFields);
-
-                customers.add(c);
+                customer.setDynamicFields(dynamicFields);
+                customers.add(customer);
             }
 
             customerRepository.saveAll(customers);
             return ResponseEntity.ok(customers);
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to upload CSV: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
+    }
+
+    private Object parseValue(String value) {
+        if (value == null || value.isEmpty())
+            return null;
+
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception ignored) {
+        }
+        try {
+            return Double.parseDouble(value);
+        } catch (Exception ignored) {
+        }
+        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
+            return Boolean.parseBoolean(value);
+
+        return value;
     }
 
     // =========================
@@ -189,7 +205,12 @@ public class CustomerController {
             this.data = data;
         }
 
-        public String getMessage() { return message; }
-        public Object getData() { return data; }
+        public String getMessage() {
+            return message;
+        }
+
+        public Object getData() {
+            return data;
+        }
     }
 }
