@@ -50,7 +50,7 @@ public class AuthController {
         String email = request.get("email");
 
         // 1️⃣ Try Admin
-        Optional<Admin> adminOpt = adminRepository.findByDynamicFieldsEmail(email);
+        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             String token = UUID.randomUUID().toString();

@@ -1,34 +1,34 @@
 package com.spiritedhub.spiritedhub.service;
 
-import com.spiritedhub.spiritedhub.entity.Admin;
-import com.spiritedhub.spiritedhub.repository.AdminRepository;
+import com.spiritedhub.spiritedhub.entity.Customer;
+import com.spiritedhub.spiritedhub.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Autowired
-    private AdminRepository adminRepository;
+    private CustomerRepository customerRepository;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Fetch admin from Postgres by email
-        Admin admin = adminRepository.findByDynamicFieldsEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Admin not found with email: " + email));
+        // Find customer by dynamicFields.email
+        Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
 
-        // Grant ROLE_ADMIN authority
-        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        Customer customer = customerOpt.orElseThrow(
+                () -> new UsernameNotFoundException("Customer not found with email: " + email)
+        );
 
-        // Return Spring Security User object with plain-text password
-        return new User(admin.getEmail(), admin.getPassword(), authorities);
+        String password = customer.getPassword();
+
+        return User.builder()
+                .username(email)
+                .password(password)
+                .roles("CUSTOMER") // you can extend for roles later
+                .build();
     }
 }
