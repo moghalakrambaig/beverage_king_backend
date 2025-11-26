@@ -22,7 +22,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         // Fetch admin from Postgres by email
-        Admin admin = adminRepository.findByEmail(email)
+        Admin admin = adminRepository.findByDynamicFieldsEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Admin not found with email: " + email));
 
         // Grant ROLE_ADMIN authority

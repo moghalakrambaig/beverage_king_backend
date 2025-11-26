@@ -24,52 +24,44 @@ public class CustomerService {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * Save customers imported from CSV dynamically
-     * ANY column will be saved automatically in dynamicFields
+     * Save customers imported from CSV dynamically.
+     * ALL columns are saved into dynamicFields automatically.
      */
     public List<Customer> saveCustomersFromCsv(MultipartFile file)
             throws IOException, CsvValidationException {
 
         List<Customer> customers = new ArrayList<>();
 
-        try (CSVReader reader =
-                     new CSVReader(new InputStreamReader(file.getInputStream()))) {
+        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
 
-            String[] headerRow = reader.readNext(); // read column names
-            if (headerRow == null) return customers;
+            String[] headers = reader.readNext(); // read CSV column names
+            if (headers == null) return customers;
 
-            while (true) {
-                String[] row = reader.readNext();
-                if (row == null) break;
-
+            String[] row;
+            while ((row = reader.readNext()) != null) {
                 Customer customer = new Customer();
-                Map<String, Object> dynamic = new HashMap<>();
+                Map<String, Object> dynamicFields = new HashMap<>();
 
-                for (int i = 0; i < headerRow.length; i++) {
-                    String column = headerRow[i].trim();
+                for (int i = 0; i < headers.length; i++) {
+                    String key = headers[i].trim();
                     String value = i < row.length ? row[i].trim() : "";
 
-                    // ================================
-                    // Map known fields (optional)
-                    // CSV columns can be anything
-                    // ================================
-                    switch (column.toLowerCase()) {
-                        case "name" -> customer.setName(value);
-                        case "phone" -> customer.setPhone(value);
-                        case "email" -> customer.setEmail(value);
-                        case "password" -> customer.setPassword(passwordEncoder.encode(value));
-                        case "signupdate" -> customer.setSignUpDate(parseInstant(value));
-                        default -> dynamic.put(column, parseValue(value));
+                    // Treat password specially
+                    if (key.equalsIgnoreCase("password")) {
+                        customer.setPassword(passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
+                        continue;
                     }
+
+                    // All other columns go into dynamicFields with auto-detection
+                    dynamicFields.put(key, parseValue(value));
                 }
 
-                // Default password if missing
+                // Default password if not set
                 if (customer.getPassword() == null) {
                     customer.setPassword(passwordEncoder.encode("defaultPassword"));
                 }
 
-                customer.setDynamicFields(dynamic);
-
+                customer.setDynamicFields(dynamicFields);
                 customers.add(customer);
             }
         }
@@ -77,38 +69,42 @@ public class CustomerService {
         return customerRepository.saveAll(customers);
     }
 
-    // ======================
+    // =========================
     // Helper Methods
-    // ======================
+    // =========================
 
+    /**
+     * Auto-detect type: integer, double, boolean, or string
+     */
+    private Object parseValue(String value) {
+        if (value == null || value.isEmpty()) return null;
+
+        // Try integer
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ignored) {}
+
+        // Try double
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {}
+
+        // Try boolean
+        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
+            return Boolean.parseBoolean(value);
+
+        // fallback to string
+        return value;
+    }
+
+    /**
+     * Optional: parse date strings to Instant
+     */
     private Instant parseInstant(String value) {
         try {
             return (value == null || value.isEmpty()) ? null : Instant.parse(value);
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /**
-     * Auto-detect and convert numeric/boolean fields
-     */
-    private Object parseValue(String value) {
-        if (value == null || value.isEmpty()) return null;
-
-        // try integer
-        try {
-            return Integer.parseInt(value);
-        } catch (Exception ignored) {}
-
-        // try decimal
-        try {
-            return Double.parseDouble(value);
-        } catch (Exception ignored) {}
-
-        // try boolean
-        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
-            return Boolean.parseBoolean(value);
-
-        return value; // fallback to string
     }
 }

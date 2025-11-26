@@ -31,13 +31,26 @@ public class AuthController {
     @Autowired
     private EmailService emailService;
 
+    // ================= Dynamic field helpers =================
+    private void setCustomerField(Customer customer, String key, Object value) {
+        if (customer.getDynamicFields() == null) {
+            customer.setDynamicFields(new java.util.HashMap<>());
+        }
+        customer.getDynamicFields().put(key, value);
+    }
+
+    private Object getCustomerField(Customer customer, String key) {
+        if (customer.getDynamicFields() == null) return null;
+        return customer.getDynamicFields().get(key);
+    }
+
     // ================= Forgot Password =================
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
 
         // 1️⃣ Try Admin
-        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+        Optional<Admin> adminOpt = adminRepository.findByDynamicFieldsEmail(email);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             String token = UUID.randomUUID().toString();
@@ -50,17 +63,18 @@ public class AuthController {
                     "Click this link to reset your admin password: " + resetLink);
         }
 
-        // 2️⃣ Try Customer
-        Optional<Customer> customerOpt = customerRepository.findByEmail(email);
+        // 2️⃣ Try Customer (dynamic)
+        Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
             String token = UUID.randomUUID().toString();
-            customer.setResetPasswordToken(token);
-            customer.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
+            setCustomerField(customer, "resetPasswordToken", token);
+            setCustomerField(customer, "resetPasswordExpiry", Instant.now().plusSeconds(3600));
             customerRepository.save(customer);
 
             String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
-            emailService.sendEmail(customer.getEmail(), "Customer Password Reset",
+            emailService.sendEmail((String) getCustomerField(customer, "email"),
+                    "Customer Password Reset",
                     "Click this link to reset your customer account password: " + resetLink);
         }
 
@@ -73,11 +87,10 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
         String token = request.getToken();
         String newPassword = request.getNewPassword();
-
         Instant now = Instant.now();
 
-        // 1️⃣ Try Admin reset
-        Optional<Admin> adminOpt = adminRepository.findByResetPasswordToken(token);
+        // 1️⃣ Try Admin
+        Optional<Admin> adminOpt = adminRepository.findByDynamicFieldsResetPasswordToken(token);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
 
@@ -93,20 +106,21 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Admin password reset successfully"));
         }
 
-        // 2️⃣ Try Customer reset
-        Optional<Customer> customerOpt = customerRepository.findByResetPasswordToken(token);
+        // 2️⃣ Try Customer (dynamic)
+        Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsResetPasswordToken(token);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
+            Instant expiry = (Instant) getCustomerField(customer, "resetPasswordExpiry");
 
-            if (customer.getResetPasswordExpiry() == null || customer.getResetPasswordExpiry().isBefore(now)) {
+            if (expiry == null || expiry.isBefore(now)) {
                 return ResponseEntity.ok(Map.of("message", "Token has expired"));
             }
 
-            customer.setPassword(passwordEncoder.encode(newPassword));
-            customer.setResetPasswordToken(null);
-            customer.setResetPasswordExpiry(null);
-            customerRepository.save(customer);
+            setCustomerField(customer, "password", passwordEncoder.encode(newPassword));
+            setCustomerField(customer, "resetPasswordToken", null);
+            setCustomerField(customer, "resetPasswordExpiry", null);
 
+            customerRepository.save(customer);
             return ResponseEntity.ok(Map.of("message", "Customer password reset successfully"));
         }
 
