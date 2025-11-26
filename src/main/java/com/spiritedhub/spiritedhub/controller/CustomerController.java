@@ -131,19 +131,23 @@ public class CustomerController {
     // =========================
     @PostMapping("/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty())
+        if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("File is empty");
+        }
 
         List<Customer> customers = new ArrayList<>();
 
         try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
 
+            // Read headers
             String[] headers = reader.readNext();
-            if (headers == null)
-                return ResponseEntity.badRequest().body("CSV has no header");
+            if (headers == null) {
+                return ResponseEntity.badRequest().body("CSV has no header row");
+            }
 
             String[] row;
             while ((row = reader.readNext()) != null) {
+
                 Customer customer = new Customer();
                 Map<String, Object> dynamicFields = new HashMap<>();
 
@@ -152,15 +156,17 @@ public class CustomerController {
                     String value = (i < row.length) ? row[i].trim() : "";
 
                     if (key.equalsIgnoreCase("password")) {
-                        customer.setPassword(passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
+                        customer.setPassword(
+                                passwordEncoder.encode(value.isEmpty() ? "defaultPassword" : value));
                         continue;
                     }
 
                     dynamicFields.put(key, parseValue(value));
                 }
 
-                if (customer.getPassword() == null)
+                if (customer.getPassword() == null) {
                     customer.setPassword(passwordEncoder.encode("defaultPassword"));
+                }
 
                 customer.setDynamicFields(dynamicFields);
                 customers.add(customer);
@@ -171,7 +177,7 @@ public class CustomerController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Upload failed: " + e.getMessage());
         }
     }
 
