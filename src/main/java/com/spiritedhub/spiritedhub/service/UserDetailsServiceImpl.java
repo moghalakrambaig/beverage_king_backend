@@ -19,9 +19,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // Find customer by dynamicFields.email
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
 
-        Customer customer = customerOpt.orElseThrow(
-                () -> new UsernameNotFoundException("Customer not found with email: " + email)
-        );
+        Customer customer = customerRepository.findByDynamicFieldsEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Customer not found"));
 
         String password = customer.getPassword();
 
