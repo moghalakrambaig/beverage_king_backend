@@ -36,13 +36,20 @@ public class CustomerController {
     // =========================
     @PostMapping("/customers")
     public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
+        // Extract email from dynamicFields if available
         if (customer.getDynamicFields() != null && customer.getDynamicFields().get("email") != null) {
             String email = customer.getDynamicFields().get("email").toString();
+
+            // Check if email already exists
             if (customerRepository.findByDynamicFieldsEmail(email).isPresent()) {
                 return ResponseEntity.badRequest().body(new ApiResponse("Email already exists", null));
             }
+
+            // **Set it on the actual field** so it gets saved
+            customer.setEmail(email);
         }
 
+        // Set default password if not provided
         if (customer.getPassword() == null) {
             customer.setPassword(passwordEncoder.encode("defaultPassword"));
         }
