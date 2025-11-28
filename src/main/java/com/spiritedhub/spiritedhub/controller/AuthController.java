@@ -44,6 +44,28 @@ public class AuthController {
         return customer.getDynamicFields().get(key);
     }
 
+    @PostMapping("/signin")
+public ResponseEntity<?> adminLogin(@RequestBody Map<String, String> request) {
+    String email = request.get("email");
+    String password = request.get("password");
+
+    Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+    if (adminOpt.isEmpty()) {
+        return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
+    }
+
+    Admin admin = adminOpt.get();
+    if (!passwordEncoder.matches(password, admin.getPassword())) {
+        return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
+    }
+
+    // Optionally: generate JWT or session info here
+    return ResponseEntity.ok(Map.of(
+            "message", "Login successful",
+            "email", admin.getEmail()
+    ));
+}
+
     // ================= Forgot Password =================
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
