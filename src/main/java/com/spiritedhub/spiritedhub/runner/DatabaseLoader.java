@@ -22,7 +22,7 @@ public class DatabaseLoader implements CommandLineRunner {
         if (adminRepository.count() == 0) {
             Admin admin = new Admin();
             admin.setEmail("admin@spiritedhub.com");
-            admin.setPassword(passwordEncoder.encode("password"));
+            admin.setPassword(passwordEncoder.encode("passwordd"));
             adminRepository.save(admin);
         }
     }
