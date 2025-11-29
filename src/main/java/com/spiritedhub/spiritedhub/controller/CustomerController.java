@@ -74,15 +74,17 @@ public class CustomerController {
 
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
 
-        if (customerOpt.isEmpty() ||
-                !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
-
-            return ResponseEntity.status(401)
-                    .body(new ApiResponse("Invalid credentials", null));
+        if (customerOpt.isEmpty()) {
+            return ResponseEntity.status(401).body(new ApiResponse("Invalid email", null));
         }
 
-        return ResponseEntity.ok(
-                new ApiResponse("Login successful", customerOpt.get()));
+        Customer customer = customerOpt.get();
+
+        if (!passwordEncoder.matches(password, customer.getPassword())) {
+            return ResponseEntity.status(401).body(new ApiResponse("Invalid password", null));
+        }
+
+        return ResponseEntity.ok(new ApiResponse("Login successful", customer));
     }
 
     // =========================

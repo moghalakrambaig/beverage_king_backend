@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface CustomerRepository extends MongoRepository<Customer, String> {
 
-    @Query("{ 'dynamicFields.email' : ?0 }")
+    @Query("{ 'dynamicFields.Email': ?0 }")
     Optional<Customer> findByDynamicFieldsEmail(String email);
 
     @Query("{ 'dynamicFields.resetPasswordToken' : ?0 }")
