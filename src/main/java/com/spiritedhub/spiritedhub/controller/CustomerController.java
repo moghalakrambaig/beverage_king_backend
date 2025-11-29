@@ -1,22 +1,27 @@
 package com.spiritedhub.spiritedhub.controller;
 
-import com.opencsv.CSVReader;
-import com.spiritedhub.spiritedhub.entity.Customer;
-import com.spiritedhub.spiritedhub.repository.CustomerRepository;
-import com.spiritedhub.spiritedhub.service.CustomerService;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.*;
+import com.spiritedhub.spiritedhub.entity.Customer;
+import com.spiritedhub.spiritedhub.repository.CustomerRepository;
+import com.spiritedhub.spiritedhub.service.CustomerService;
 
 @RestController
 @RequestMapping("/api")
@@ -62,10 +67,7 @@ public class CustomerController {
     // LOGIN
     // =========================
     @PostMapping("/auth/customer-login")
-    public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> request) {
-
-        String email = request.get("email");
-        String password = request.get("password");
+    public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
 
         if (email == null || password == null) {
             return ResponseEntity.badRequest()
