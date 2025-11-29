@@ -67,22 +67,22 @@ public class CustomerController {
     // LOGIN
     // =========================
     @PostMapping("/auth/customer-login")
-    public ResponseEntity<?> customerLogin(@RequestParam String email, @RequestParam String password) {
+    public ResponseEntity<ApiResponse> customerLogin(@RequestBody Map<String, String> body) {
 
-        if (email == null || password == null) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponse("Email and password are required", null));
-        }
+        String email = body.get("email");
+        String password = body.get("password");
 
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
 
         if (customerOpt.isEmpty() ||
                 !passwordEncoder.matches(password, customerOpt.get().getPassword())) {
+
             return ResponseEntity.status(401)
                     .body(new ApiResponse("Invalid credentials", null));
         }
 
-        return ResponseEntity.ok(new ApiResponse("Login successful", customerOpt.get()));
+        return ResponseEntity.ok(
+                new ApiResponse("Login successful", customerOpt.get()));
     }
 
     // =========================
