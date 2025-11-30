@@ -70,14 +70,25 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
+        }
+        email = email.trim();
 
-        // 1️⃣ Try Admin
+        // Simple email format validation
+        if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid email format"));
+        }
+
+        Instant now = Instant.now();
+
+        // ================= Admin =================
         Optional<Admin> adminOpt = adminRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             String token = UUID.randomUUID().toString();
             admin.setResetPasswordToken(token);
-            admin.setResetPasswordExpiry(Instant.now().plusSeconds(3600)); // 1 hour
+            admin.setResetPasswordExpiry(now.plusSeconds(3600)); // 1 hour
             adminRepository.save(admin);
 
             String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
@@ -87,19 +98,16 @@ public class AuthController {
                     + "<a href=\"" + resetLink + "\">Reset Password</a>"
                     + "<br><br><p>If you did not request this, please ignore.</p>";
 
-            emailService.sendHtmlEmail(
-                    admin.getEmail(),
-                    "Admin Password Reset",
-                    htmlBody);
+            emailService.sendHtmlEmail(email, "Admin Password Reset", htmlBody);
         }
 
-        // 2️⃣ Try Customer (dynamic)
+        // ================= Customer =================
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
             String token = UUID.randomUUID().toString();
             setCustomerField(customer, "resetPasswordToken", token);
-            setCustomerField(customer, "resetPasswordExpiry", Instant.now().plusSeconds(3600));
+            setCustomerField(customer, "resetPasswordExpiry", now.plusSeconds(3600));
             customerRepository.save(customer);
 
             String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
@@ -109,13 +117,12 @@ public class AuthController {
                     + "<a href=\"" + resetLink + "\">Reset Password</a>"
                     + "<br><br><p>If you did not request this, please ignore.</p>";
 
-            emailService.sendHtmlEmail(
-                    (String) getCustomerField(customer, "email"),
-                    "Customer Password Reset",
-                    htmlBody);
+            // Use the payload email directly to avoid null or invalid email
+            emailService.sendHtmlEmail(email, "Customer Password Reset", htmlBody);
         }
 
-        // Always return success (avoid email enumeration)
+        // ================= Always return success =================
+        // Prevent email enumeration
         return ResponseEntity.ok(Map.of("message", "If this email exists, a reset link has been sent."));
     }
 
