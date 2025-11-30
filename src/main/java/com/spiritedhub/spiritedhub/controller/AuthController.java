@@ -81,8 +81,16 @@ public class AuthController {
             adminRepository.save(admin);
 
             String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
-            emailService.sendEmail(admin.getEmail(), "Admin Password Reset",
-                    "Click this link to reset your admin password: " + resetLink);
+
+            String htmlBody = "<h2>Admin Password Reset</h2>"
+                    + "<p>Click the link below to reset your password:</p>"
+                    + "<a href=\"" + resetLink + "\">Reset Password</a>"
+                    + "<br><br><p>If you did not request this, please ignore.</p>";
+
+            emailService.sendHtmlEmail(
+                    admin.getEmail(),
+                    "Admin Password Reset",
+                    htmlBody);
         }
 
         // 2️⃣ Try Customer (dynamic)
@@ -95,9 +103,16 @@ public class AuthController {
             customerRepository.save(customer);
 
             String resetLink = "https://beverageking.vercel.app/reset-password?token=" + token;
-            emailService.sendEmail((String) getCustomerField(customer, "email"),
+
+            String htmlBody = "<h2>Customer Password Reset</h2>"
+                    + "<p>Click the link below to reset your password:</p>"
+                    + "<a href=\"" + resetLink + "\">Reset Password</a>"
+                    + "<br><br><p>If you did not request this, please ignore.</p>";
+
+            emailService.sendHtmlEmail(
+                    (String) getCustomerField(customer, "email"),
                     "Customer Password Reset",
-                    "Click this link to reset your customer account password: " + resetLink);
+                    htmlBody);
         }
 
         // Always return success (avoid email enumeration)
@@ -128,7 +143,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Admin password reset successfully"));
         }
 
-        // 2️⃣ Try Customer (dynamic)
+        // 2️⃣ Try Customer
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsResetPasswordToken(token);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
