@@ -41,7 +41,11 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/customers/**").permitAll()
+                        .requestMatchers("/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/login",
+                                "/api/auth/register")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginProcessingUrl("/api/auth/signin")
