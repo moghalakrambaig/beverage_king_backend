@@ -17,7 +17,7 @@ public class EmailService {
         @Autowired
         private SesClient sesClient;
 
-        @Value("${aws.ses.fromEmail}")
+        @Value("${AWS_SES_FROM_EMAIL}")
         private String fromEmail;
 
         public void sendPasswordResetEmail(String toEmail, String resetLink) {

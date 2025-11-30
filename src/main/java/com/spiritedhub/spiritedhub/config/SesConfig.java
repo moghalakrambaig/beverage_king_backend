@@ -13,13 +13,13 @@ import software.amazon.awssdk.services.ses.SesClient;
 @Configuration
 public class SesConfig {
 
-        @Value("${aws.accessKey}")
+        @Value("${AWS_ACCESS_KEY_ID}")
         private String accessKey;
 
-        @Value("${aws.secretKey}")
+        @Value("${AWS_SECRET_ACCESS_KEY}")
         private String secretKey;
 
-        @Value("${aws.region}")
+        @Value("${AWS_REGION}")
         private String region;
 
         @Bean
