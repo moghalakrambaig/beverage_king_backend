@@ -28,9 +28,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
+                // Disable CSRF for REST endpoints
                 .csrf(csrf -> csrf.disable())
+
+                // Enable CORS
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
                     config.setAllowedOrigins(List.of("http://localhost:5173", "https://beverageking.vercel.app"));
@@ -39,23 +41,21 @@ public class SecurityConfig {
                     config.setAllowCredentials(true);
                     return config;
                 }))
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
+                // Stateless session (recommended for APIs)
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Public endpoints
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/forgot-password",
+                        .requestMatchers(
+                                "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/auth/login",
                                 "/api/auth/register")
                         .permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form
-                        .loginProcessingUrl("/api/auth/signin")
-                        .usernameParameter("email")
-                        .passwordParameter("password")
-                        .successHandler((req, res, auth) -> res.setStatus(HttpStatus.OK.value()))
-                        .failureHandler((req, res, ex) -> res.setStatus(HttpStatus.UNAUTHORIZED.value())))
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(HttpStatus.OK.value())))
+
+                // Exception handling
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
 
         return http.build();
