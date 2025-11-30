@@ -19,7 +19,7 @@ public class PasswordResetService {
     @Autowired
     private EmailService emailService;
 
-    @Value("${frontend.reset.url}")
+    @Value("${FRONTEND_RESET_URL}")
     private String frontendResetUrl;
 
     public void createResetToken(String email) {
