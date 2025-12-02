@@ -1,19 +1,43 @@
 package com.spiritedhub.spiritedhub.entity;
 
-import java.time.LocalDateTime;
-
-import org.springframework.data.mongodb.core.mapping.Document;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import java.time.Instant;
 
 @Entity
-@Document(collection = "password_reset_tokens")
+@Table(name = "password_reset_tokens")
 public class PasswordResetToken {
+
     @Id
-    public String token;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    public String email;
-    public LocalDateTime expiry;
+    @Column(nullable = false, unique = true)
+    private String token;
+
+    @Column(nullable = false)
+    private String email; // or customerId if you prefer
+
+    @Column(nullable = false)
+    private Instant expiryDate;
+
+    public PasswordResetToken() {}
+
+    public PasswordResetToken(String token, String email, Instant expiryDate) {
+        this.token = token;
+        this.email = email;
+        this.expiryDate = expiryDate;
+    }
+
+    // Getters & Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public Instant getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
 }
-
