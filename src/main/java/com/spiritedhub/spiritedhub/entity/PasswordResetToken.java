@@ -3,8 +3,9 @@ package com.spiritedhub.spiritedhub.entity;
 import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "password_reset_tokens")
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "password_reset_tokens")
 public class PasswordResetToken {
 
     @Id
