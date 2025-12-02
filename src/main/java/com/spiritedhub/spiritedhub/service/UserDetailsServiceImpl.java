@@ -2,8 +2,10 @@ package com.spiritedhub.spiritedhub.service;
 
 import com.spiritedhub.spiritedhub.entity.Admin;
 import com.spiritedhub.spiritedhub.entity.Customer;
+import com.spiritedhub.spiritedhub.entity.PasswordAuth;
 import com.spiritedhub.spiritedhub.repository.AdminRepository;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
+import com.spiritedhub.spiritedhub.repository.PasswordAuthRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private PasswordAuthRepository passwordAuthRepository;
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
@@ -29,20 +34,30 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
             return User.builder()
                     .username(admin.getEmail())
-                    .password(admin.getPassword()) // must be bcrypt
+                    .password(admin.getPassword()) // Already bcrypt
                     .roles("ADMIN")
                     .build();
         }
 
-        // 2️⃣ Try Customer Login (dynamic email field)
+        // 2️⃣ Try Customer Login
         Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
 
         if (customerOpt.isPresent()) {
+
             Customer customer = customerOpt.get();
+
+            // Fetch password from PasswordAuth table
+            Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
+
+            if (authOpt.isEmpty()) {
+                throw new UsernameNotFoundException("Password not found for email: " + email);
+            }
+
+            PasswordAuth auth = authOpt.get();
 
             return User.builder()
                     .username(email)
-                    .password(customer.getPassword()) // must be bcrypt
+                    .password(auth.getPasswordHash()) // bcrypt hash
                     .roles("CUSTOMER")
                     .build();
         }

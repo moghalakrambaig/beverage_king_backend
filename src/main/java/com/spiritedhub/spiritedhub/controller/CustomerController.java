@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.spiritedhub.spiritedhub.entity.Customer;
+import com.spiritedhub.spiritedhub.entity.PasswordAuth;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
+import com.spiritedhub.spiritedhub.repository.PasswordAuthRepository;
 import com.spiritedhub.spiritedhub.service.CustomerService;
 
 @RestController
@@ -36,81 +38,114 @@ public class CustomerController {
     @Autowired
     private CustomerService customerService;
 
-    // =========================
+    @Autowired
+    private PasswordAuthRepository passwordAuthRepository;
+
+    // ---------------------------------------------------------
     // CREATE CUSTOMER
-    // =========================
+    // ---------------------------------------------------------
     @PostMapping("/customers")
-    public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
-        // Extract email from dynamicFields if available
-        if (customer.getDynamicFields() != null && customer.getDynamicFields().get("email") != null) {
-            String email = customer.getDynamicFields().get("email").toString();
+    public ResponseEntity<?> createCustomer(@RequestBody Map<String, Object> body) {
 
-            // Check if email already exists
-            if (customerRepository.findByDynamicFieldsEmail(email).isPresent()) {
-                return ResponseEntity.badRequest().body(new ApiResponse("Email already exists", null));
-            }
+        // Convert incoming payload into a Customer
+        Customer customer = new Customer();
 
-            // **Set it on the actual field** so it gets saved
-            customer.setEmail(email);
+        if (!body.containsKey("dynamicFields")) {
+            return ResponseEntity.status(400)
+                    .body(new ApiResponse("dynamicFields object is required", null));
         }
 
-        // Set default password if not provided
-        if (customer.getPassword() == null) {
-            customer.setPassword(passwordEncoder.encode("defaultPassword"));
+        Map<String, Object> dynamicFields = (Map<String, Object>) body.get("dynamicFields");
+        customer.setDynamicFields(dynamicFields);
+
+        if (!dynamicFields.containsKey("Email")) {
+            return ResponseEntity.status(400)
+                    .body(new ApiResponse("Email field is required", null));
         }
 
+        String email = dynamicFields.get("Email").toString();
+        String rawPassword = body.containsKey("password")
+                ? body.get("password").toString()
+                : "defaultPassword";
+
+        // 1. Save customer
         Customer savedCustomer = customerRepository.save(customer);
-        return ResponseEntity.ok(new ApiResponse("Customer created successfully", savedCustomer));
+
+        // 2. Create PasswordAuth entry
+        PasswordAuth auth = new PasswordAuth();
+        auth.setEmail(email);
+        auth.setCustomerId(savedCustomer.getId());
+        auth.setPasswordHash(passwordEncoder.encode(rawPassword));
+
+        passwordAuthRepository.save(auth);
+
+        return ResponseEntity.ok(new ApiResponse("Customer created", savedCustomer));
     }
 
-    // =========================
+
+    // ---------------------------------------------------------
     // LOGIN
-    // =========================
+    // ---------------------------------------------------------
     @PostMapping("/auth/customer-login")
-    public ResponseEntity<ApiResponse> customerLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse> login(@RequestBody Map<String, String> body) {
 
         String email = body.get("email");
         String password = body.get("password");
 
-        Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
-
-        if (customerOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(new ApiResponse("Invalid email", null));
+        if (email == null || password == null) {
+            return ResponseEntity.status(400)
+                    .body(new ApiResponse("Email and password are required", null));
         }
 
-        Customer customer = customerOpt.get();
+        Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
 
-        if (!passwordEncoder.matches(password, customer.getPassword())) {
-            return ResponseEntity.status(401).body(new ApiResponse("Invalid password", null));
+        if (authOpt.isEmpty()) {
+            return ResponseEntity.status(401)
+                    .body(new ApiResponse("Invalid credentials", null));
         }
+
+        PasswordAuth auth = authOpt.get();
+
+        if (!passwordEncoder.matches(password, auth.getPasswordHash())) {
+            return ResponseEntity.status(401)
+                    .body(new ApiResponse("Invalid credentials", null));
+        }
+
+        Customer customer = customerRepository.findById(auth.getCustomerId()).orElse(null);
 
         return ResponseEntity.ok(new ApiResponse("Login successful", customer));
     }
 
-    // =========================
+
+    // ---------------------------------------------------------
     // GET ALL CUSTOMERS
-    // =========================
+    // ---------------------------------------------------------
     @GetMapping("/customers")
     public ResponseEntity<?> getAllCustomers() {
         return ResponseEntity.ok(new ApiResponse("Customers fetched successfully", customerRepository.findAll()));
     }
 
-    // =========================
+
+    // ---------------------------------------------------------
     // GET CUSTOMER BY ID
-    // =========================
+    // ---------------------------------------------------------
     @GetMapping("/customers/{id}")
     public ResponseEntity<?> getCustomerById(@PathVariable String id) {
+
         Optional<Customer> customerOpt = customerRepository.findById(id);
+
         return customerOpt
                 .map(customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse("Customer not found", null)));
     }
 
-    // =========================
-    // UPDATE CUSTOMER
-    // =========================
+
+    // ---------------------------------------------------------
+    // UPDATE CUSTOMER (NO PASSWORD LOGIC)
+    // ---------------------------------------------------------
     @PutMapping("/customers/{id}")
     public ResponseEntity<?> updateCustomer(@PathVariable String id, @RequestBody Customer customerDetails) {
+
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isEmpty()) {
             return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
@@ -118,33 +153,45 @@ public class CustomerController {
 
         Customer customer = customerOpt.get();
 
-        if (customerDetails.getDynamicFields() != null)
+        if (customerDetails.getDynamicFields() != null) {
             customer.setDynamicFields(customerDetails.getDynamicFields());
+        }
 
-        if (customerDetails.getPassword() != null && !customerDetails.getPassword().isEmpty())
-            customer.setPassword(passwordEncoder.encode(customerDetails.getPassword()));
+        // ❌ Password NOT handled here anymore
 
         Customer saved = customerRepository.save(customer);
+
         return ResponseEntity.ok(new ApiResponse("Customer updated successfully", saved));
     }
 
-    // =========================
+
+    // ---------------------------------------------------------
     // DELETE CUSTOMER
-    // =========================
+    // ---------------------------------------------------------
     @DeleteMapping("/customers/{id}")
     public ResponseEntity<?> deleteCustomer(@PathVariable String id) {
+
         if (!customerRepository.existsById(id)) {
             return ResponseEntity.status(404).body(new ApiResponse("Customer not found", null));
         }
 
+        // Delete credentials also
+        passwordAuthRepository.deleteByCustomerId(id);
+
         customerRepository.deleteById(id);
+
         return ResponseEntity.ok(new ApiResponse("Customer deleted successfully", null));
     }
 
+
+    // ---------------------------------------------------------
+    // DELETE ALL CUSTOMERS
+    // ---------------------------------------------------------
     @DeleteMapping("/customers")
     public ResponseEntity<?> deleteAllCustomers() {
         try {
             customerRepository.deleteAll();
+            passwordAuthRepository.deleteAll();
             return ResponseEntity.ok(new ApiResponse("All customers deleted successfully", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -152,9 +199,10 @@ public class CustomerController {
         }
     }
 
-    // =========================
-    // CSV UPLOAD (Fully Dynamic)
-    // =========================
+
+    // ---------------------------------------------------------
+    // CSV UPLOAD
+    // ---------------------------------------------------------
     @PostMapping("/customers/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
 
@@ -163,7 +211,6 @@ public class CustomerController {
 
         try {
             List<Customer> customers = customerService.saveCustomersFromCsv(file);
-
             return ResponseEntity.ok(customers);
 
         } catch (Exception e) {
@@ -172,27 +219,10 @@ public class CustomerController {
         }
     }
 
-    private Object parseValue(String value) {
-        if (value == null || value.isEmpty())
-            return null;
 
-        try {
-            return Integer.parseInt(value);
-        } catch (Exception ignored) {
-        }
-        try {
-            return Double.parseDouble(value);
-        } catch (Exception ignored) {
-        }
-        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
-            return Boolean.parseBoolean(value);
-
-        return value;
-    }
-
-    // =========================
-    // Helper class
-    // =========================
+    // ---------------------------------------------------------
+    // Helper Class
+    // ---------------------------------------------------------
     private static class ApiResponse {
         private final String message;
         private final Object data;

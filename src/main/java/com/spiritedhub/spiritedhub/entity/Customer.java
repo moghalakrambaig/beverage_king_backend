@@ -11,23 +11,33 @@ public class Customer {
     @Id
     private String id;
 
-     private String email;
+    private String email;
 
     // Store all CSV data dynamically
     private Map<String, Object> dynamicFields;
 
-    private String password; // optional default password
-
     // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public Map<String, Object> getDynamicFields() { return dynamicFields; }
-    public void setDynamicFields(Map<String, Object> dynamicFields) { this.dynamicFields = dynamicFields; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public Map<String, Object> getDynamicFields() {
+        return dynamicFields;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setDynamicFields(Map<String, Object> dynamicFields) {
+        this.dynamicFields = dynamicFields;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 }
