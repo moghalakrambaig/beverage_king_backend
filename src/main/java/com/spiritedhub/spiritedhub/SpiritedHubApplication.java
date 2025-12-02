@@ -6,8 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = "com.spiritedhub.spiritedhub.jpa.repositories")
-@EnableMongoRepositories(basePackages = "com.spiritedhub.spiritedhub.mongo.repositories")
+@EnableMongoRepositories(basePackages = "com.spiritedhub.spiritedhub.repository")
 public class SpiritedHubApplication {
 
 	public static void main(String[] args) {
