@@ -1,5 +1,6 @@
 package com.spiritedhub.spiritedhub.controller;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.opencsv.exceptions.CsvValidationException;
 import com.spiritedhub.spiritedhub.entity.Customer;
 import com.spiritedhub.spiritedhub.entity.PasswordAuth;
 import com.spiritedhub.spiritedhub.repository.CustomerRepository;
@@ -44,44 +46,31 @@ public class CustomerController {
     // ---------------------------------------------------------
     // CREATE CUSTOMER
     // ---------------------------------------------------------
-    @PostMapping("/customers")
-    public ResponseEntity<?> createCustomer(@RequestBody Map<String, Object> body) {
-
-        // Convert incoming payload into a Customer
-        Customer customer = new Customer();
-
-        if (!body.containsKey("dynamicFields")) {
-            return ResponseEntity.status(400)
-                    .body(new ApiResponse("dynamicFields object is required", null));
+    @PostMapping("/upload-csv")
+    public ResponseEntity<ApiResponse> uploadCsv(@RequestParam("file") MultipartFile file) {
+        try {
+            List<Customer> customers = customerService.saveCustomersFromCsv(file);
+            return ResponseEntity.ok(new ApiResponse("CSV processed successfully", customers));
+        } catch (IOException | CsvValidationException e) {
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse("Failed to process CSV: " + e.getMessage(), null));
         }
-
-        Map<String, Object> dynamicFields = (Map<String, Object>) body.get("dynamicFields");
-        customer.setDynamicFields(dynamicFields);
-
-        if (!dynamicFields.containsKey("Email")) {
-            return ResponseEntity.status(400)
-                    .body(new ApiResponse("Email field is required", null));
-        }
-
-        String email = dynamicFields.get("Email").toString();
-        String rawPassword = body.containsKey("password")
-                ? body.get("password").toString()
-                : "defaultPassword";
-
-        // 1. Save customer
-        Customer savedCustomer = customerRepository.save(customer);
-
-        // 2. Create PasswordAuth entry
-        PasswordAuth auth = new PasswordAuth();
-        auth.setEmail(email);
-        auth.setCustomerId(savedCustomer.getId());
-        auth.setPasswordHash(passwordEncoder.encode(rawPassword));
-
-        passwordAuthRepository.save(auth);
-
-        return ResponseEntity.ok(new ApiResponse("Customer created", savedCustomer));
     }
 
+    // =========================
+    // 2️⃣ Single customer via JSON
+    // =========================
+    @PostMapping
+    public ResponseEntity<ApiResponse> createOrUpdateCustomer(@RequestBody Map<String, Object> body) {
+        try {
+            Customer customer = customerService.createOrUpdateCustomer(body);
+            return ResponseEntity.ok(new ApiResponse("Customer processed successfully", customer));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ApiResponse("Error: " + e.getMessage(), null));
+        }
+    }
 
     // ---------------------------------------------------------
     // LOGIN
@@ -116,7 +105,6 @@ public class CustomerController {
         return ResponseEntity.ok(new ApiResponse("Login successful", customer));
     }
 
-
     // ---------------------------------------------------------
     // GET ALL CUSTOMERS
     // ---------------------------------------------------------
@@ -124,7 +112,6 @@ public class CustomerController {
     public ResponseEntity<?> getAllCustomers() {
         return ResponseEntity.ok(new ApiResponse("Customers fetched successfully", customerRepository.findAll()));
     }
-
 
     // ---------------------------------------------------------
     // GET CUSTOMER BY ID
@@ -138,7 +125,6 @@ public class CustomerController {
                 .map(customer -> ResponseEntity.ok(new ApiResponse("Customer fetched successfully", customer)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse("Customer not found", null)));
     }
-
 
     // ---------------------------------------------------------
     // UPDATE CUSTOMER (NO PASSWORD LOGIC)
@@ -164,7 +150,6 @@ public class CustomerController {
         return ResponseEntity.ok(new ApiResponse("Customer updated successfully", saved));
     }
 
-
     // ---------------------------------------------------------
     // DELETE CUSTOMER
     // ---------------------------------------------------------
@@ -183,7 +168,6 @@ public class CustomerController {
         return ResponseEntity.ok(new ApiResponse("Customer deleted successfully", null));
     }
 
-
     // ---------------------------------------------------------
     // DELETE ALL CUSTOMERS
     // ---------------------------------------------------------
@@ -198,7 +182,6 @@ public class CustomerController {
                     .body(new ApiResponse("Failed to delete all customers: " + e.getMessage(), null));
         }
     }
-
 
     // ---------------------------------------------------------
     // CSV UPLOAD
@@ -218,7 +201,6 @@ public class CustomerController {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
-
 
     // ---------------------------------------------------------
     // Helper Class

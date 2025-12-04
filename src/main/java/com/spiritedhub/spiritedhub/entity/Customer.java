@@ -9,22 +9,12 @@ import java.util.Map;
 public class Customer {
 
     @Id
-    private String id;
-
     private String email;
 
     // Store all CSV data dynamically
     private Map<String, Object> dynamicFields;
 
     // Getters and Setters
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
     public Map<String, Object> getDynamicFields() {
         return dynamicFields;
     }

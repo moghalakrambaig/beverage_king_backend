@@ -21,8 +21,8 @@ public class DatabaseLoader implements CommandLineRunner {
     public void run(String... args) throws Exception {
         if (adminRepository.count() == 0) {
             Admin admin = new Admin();
-            admin.setEmail("admin@spiritedhub.com");
-            admin.setPassword(passwordEncoder.encode("passwordd"));
+            admin.setEmail("admin@beverageking.com");
+            admin.setPassword(passwordEncoder.encode("password"));
             adminRepository.save(admin);
         }
     }

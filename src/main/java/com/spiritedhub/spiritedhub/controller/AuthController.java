@@ -55,8 +55,8 @@ public class AuthController {
         return customer.getDynamicFields().get(key);
     }
 
-    // ================= Admin Sign In =================
-    @PostMapping("/signin")
+    // ================= Admin Login =================
+    @PostMapping("/admin-login")
     public ResponseEntity<?> adminLogin(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
