@@ -74,28 +74,6 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Login successful", "email", admin.getEmail()));
     }
 
-    // ================= Customer Login =================
-    @PostMapping("/customer-login")
-    public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        String password = request.get("password");
-
-        if (email == null || password == null)
-            return ResponseEntity.badRequest().body(Map.of("message", "Email and password required"));
-
-        Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
-        if (authOpt.isEmpty() || !passwordEncoder.matches(password, authOpt.get().getPasswordHash())) {
-            return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
-        }
-
-        Optional<Customer> customerOpt = customerRepository.findById(authOpt.get().getCustomerId());
-        if (customerOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("message", "Customer not found"));
-        }
-
-        return ResponseEntity.ok(Map.of("message", "Login successful", "data", customerOpt.get()));
-    }
-
     // ================= Forgot Password =================
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {

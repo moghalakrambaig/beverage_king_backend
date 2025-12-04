@@ -75,34 +75,25 @@ public class CustomerController {
     // ---------------------------------------------------------
     // LOGIN
     // ---------------------------------------------------------
-    @PostMapping("/auth/customer-login")
-    public ResponseEntity<ApiResponse> login(@RequestBody Map<String, String> body) {
+    @PostMapping("/customer-login")
+    public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String password = request.get("password");
 
-        String email = body.get("email");
-        String password = body.get("password");
-
-        if (email == null || password == null) {
-            return ResponseEntity.status(400)
-                    .body(new ApiResponse("Email and password are required", null));
-        }
+        if (email == null || password == null)
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and password required"));
 
         Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
-
-        if (authOpt.isEmpty()) {
-            return ResponseEntity.status(401)
-                    .body(new ApiResponse("Invalid credentials", null));
+        if (authOpt.isEmpty() || !passwordEncoder.matches(password, authOpt.get().getPasswordHash())) {
+            return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
         }
 
-        PasswordAuth auth = authOpt.get();
-
-        if (!passwordEncoder.matches(password, auth.getPasswordHash())) {
-            return ResponseEntity.status(401)
-                    .body(new ApiResponse("Invalid credentials", null));
+        Optional<Customer> customerOpt = customerRepository.findById(authOpt.get().getCustomerId());
+        if (customerOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("message", "Customer not found"));
         }
 
-        Customer customer = customerRepository.findById(auth.getCustomerId()).orElse(null);
-
-        return ResponseEntity.ok(new ApiResponse("Login successful", customer));
+        return ResponseEntity.ok(Map.of("message", "Login successful", "data", customerOpt.get()));
     }
 
     // ---------------------------------------------------------
