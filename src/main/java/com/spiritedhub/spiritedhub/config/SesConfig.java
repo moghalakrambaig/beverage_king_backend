@@ -24,11 +24,12 @@ public class SesConfig {
 
         @Bean
         public SesClient sesClient() {
+                AwsBasicCredentials creds = AwsBasicCredentials.create(
+                                System.getenv("AWS_ACCESS_KEY_ID"),
+                                System.getenv("AWS_SECRET_ACCESS_KEY"));
                 return SesClient.builder()
-                                .credentialsProvider(
-                                                StaticCredentialsProvider.create(
-                                                                AwsBasicCredentials.create(accessKey, secretKey)))
-                                .region(Region.of(region))
+                                .credentialsProvider(StaticCredentialsProvider.create(creds))
+                                .region(Region.of(System.getenv("AWS_REGION")))
                                 .build();
         }
 }
