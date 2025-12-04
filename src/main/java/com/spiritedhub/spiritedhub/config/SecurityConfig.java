@@ -44,7 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/api/customers/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
-                        .loginProcessingUrl("/api/auth/signin")
+                        .loginProcessingUrl("/api/auth/admin-login")
                         .usernameParameter("email")
                         .passwordParameter("password")
                         .successHandler((req, res, auth) -> res.setStatus(HttpStatus.OK.value()))
