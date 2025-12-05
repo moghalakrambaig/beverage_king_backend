@@ -1,6 +1,7 @@
 package com.spiritedhub.spiritedhub.controller;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -180,16 +181,26 @@ public class CustomerController {
     @PostMapping("/customers/upload-csv")
     public ResponseEntity<?> uploadCSV(@RequestParam("file") MultipartFile file) {
 
-        if (file.isEmpty())
-            return ResponseEntity.badRequest().body("File is empty");
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse("CSV file is required", null));
+        }
 
         try {
             List<Customer> customers = customerService.saveCustomersFromCsv(file);
-            return ResponseEntity.ok(customers);
+
+            if (customers.isEmpty()) {
+                return ResponseEntity
+                        .ok(new ApiResponse("CSV uploaded but no valid rows found", Collections.emptyList()));
+            }
+
+            return ResponseEntity.ok(
+                    new ApiResponse("CSV uploaded and processed successfully", customers));
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse("Failed to process CSV: " + e.getMessage(), null));
         }
     }
 

@@ -31,15 +31,21 @@ public class CustomerService {
     // 1️⃣ CSV upload method
     // =========================
     public List<Customer> saveCustomersFromCsv(MultipartFile file) throws IOException, CsvValidationException {
+
         List<Customer> customers = new ArrayList<>();
 
         try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
+
             String[] headers = reader.readNext();
             if (headers == null)
                 return customers;
 
+            boolean hasPasswordColumn = Arrays.stream(headers)
+                    .anyMatch(h -> h.equalsIgnoreCase("password"));
+
             String[] row;
             while ((row = reader.readNext()) != null) {
+
                 Map<String, Object> dynamicFields = new HashMap<>();
                 String email = null;
                 String passwordPlain = null;
@@ -50,19 +56,22 @@ public class CustomerService {
 
                     if (key.equalsIgnoreCase("email")) {
                         email = value;
-                        dynamicFields.put(key, value);
+                        dynamicFields.put("Email", value);
                         continue;
                     }
+
                     if (key.equalsIgnoreCase("password")) {
                         passwordPlain = value;
                         continue;
                     }
 
-                    dynamicFields.put(key, parseValue(value));
+                    if (!value.isEmpty()) {
+                        dynamicFields.put(key, parseValue(value));
+                    }
                 }
 
-                Customer customer = createOrUpdateCustomer(email, dynamicFields, passwordPlain);
-                customers.add(customer);
+                Customer saved = createOrUpdateCustomer(email, dynamicFields, hasPasswordColumn ? passwordPlain : null);
+                customers.add(saved);
             }
         }
 
@@ -70,57 +79,61 @@ public class CustomerService {
     }
 
     // =========================
-    // 2️⃣ API JSON payload method
+    // 2️⃣ JSON endpoint method
     // =========================
     public Customer createOrUpdateCustomer(Map<String, Object> body) {
-        if (!body.containsKey("dynamicFields")) {
-            throw new IllegalArgumentException("dynamicFields object is required");
-        }
-        Map<String, Object> dynamicFields = (Map<String, Object>) body.get("dynamicFields");
-        String email = (String) dynamicFields.get("Email");
-        String rawPassword = body.containsKey("password") ? body.get("password").toString() : null;
 
-        if (email == null || email.isBlank()) {
+        if (!body.containsKey("dynamicFields"))
+            throw new IllegalArgumentException("dynamicFields object is required");
+
+        Map<String, Object> dynamicFields = (Map<String, Object>) body.get("dynamicFields");
+
+        String email = dynamicFields.get("Email") != null ? dynamicFields.get("Email").toString() : null;
+
+        if (email == null || email.isBlank())
             throw new IllegalArgumentException("Email field is required");
-        }
+
+        String rawPassword = body.containsKey("password") ? body.get("password").toString() : null;
 
         return createOrUpdateCustomer(email, dynamicFields, rawPassword);
     }
 
     // =========================
-    // 3️⃣ Internal helper method used by both CSV & JSON
+    // 3️⃣ Used by both CSV + JSON
     // =========================
     private Customer createOrUpdateCustomer(String email, Map<String, Object> dynamicFields, String rawPassword) {
+
         Optional<Customer> existingCustomerOpt = customerRepository.findByDynamicFieldsEmail(email);
         Customer customer;
 
         if (existingCustomerOpt.isPresent()) {
-            // Update existing customer fields
             customer = existingCustomerOpt.get();
-            customer.getDynamicFields().putAll(dynamicFields);
+
+            // Do NOT overwrite fields with null or empty values
+            dynamicFields.forEach((key, value) -> {
+                if (value != null && !value.toString().isBlank()) {
+                    customer.getDynamicFields().put(key, value);
+                }
+            });
+
         } else {
-            // Create new customer
             customer = new Customer();
             customer.setDynamicFields(dynamicFields);
         }
 
         Customer savedCustomer = customerRepository.save(customer);
 
+        // =========================
         // Password handling
-        Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
-        PasswordAuth auth;
-        if (authOpt.isPresent()) {
-            auth = authOpt.get();
-            if (rawPassword != null && !rawPassword.isBlank()) {
-                auth.setPasswordHash(passwordEncoder.encode(rawPassword));
-            }
-        } else {
-            auth = new PasswordAuth();
+        // =========================
+        if (rawPassword != null && !rawPassword.isBlank()) {
+            Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
+            PasswordAuth auth = authOpt.orElseGet(PasswordAuth::new);
+
             auth.setEmail(email);
-            auth.setPasswordHash(passwordEncoder.encode(
-                    rawPassword != null && !rawPassword.isBlank() ? rawPassword : "defaultPassword"));
+            auth.setPasswordHash(passwordEncoder.encode(rawPassword));
+            passwordAuthRepository.save(auth);
         }
-        passwordAuthRepository.save(auth);
 
         return savedCustomer;
     }
@@ -134,12 +147,12 @@ public class CustomerService {
 
         try {
             return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-        }
+        } catch (Exception ignored) {}
+
         try {
             return Double.parseDouble(value);
-        } catch (NumberFormatException ignored) {
-        }
+        } catch (Exception ignored) {}
+
         if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
             return Boolean.parseBoolean(value);
 
