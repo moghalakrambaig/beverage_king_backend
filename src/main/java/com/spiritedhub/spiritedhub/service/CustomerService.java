@@ -101,41 +101,41 @@ public class CustomerService {
     // =========================
     // 3️⃣ Used by both CSV + JSON
     // =========================
-    private Customer createOrUpdateCustomer(String email, Map<String, Object> dynamicFields, String rawPassword) {
+    private Customer createOrUpdateCustomer(String email, Map<String, Object> fields, String rawPassword) {
 
-        Optional<Customer> existingCustomerOpt = customerRepository.findByDynamicFieldsEmail(email);
-        Customer customer;
-
-        if (existingCustomerOpt.isPresent()) {
-            customer = existingCustomerOpt.get();
-
-            // Do NOT overwrite fields with null or empty values
-            dynamicFields.forEach((key, value) -> {
-                if (value != null && !value.toString().isBlank()) {
-                    customer.getDynamicFields().put(key, value);
-                }
-            });
-
-        } else {
-            customer = new Customer();
-            customer.setDynamicFields(dynamicFields);
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
         }
 
-        Customer savedCustomer = customerRepository.save(customer);
+        // Load or create customer
+        Customer customer = customerRepository.findById(email).orElse(null);
 
-        // =========================
-        // Password handling
-        // =========================
+        if (customer == null) {
+            customer = new Customer();
+            customer.setId(email); // email is the stable ID
+            customer.setDynamicFields(new HashMap<>());
+        }
+
+        // Update fields safely (NO LAMBDA)
+        for (Map.Entry<String, Object> entry : fields.entrySet()) {
+            Object value = entry.getValue();
+            if (value != null && !value.toString().isBlank()) {
+                customer.getDynamicFields().put(entry.getKey(), value);
+            }
+        }
+
+        // Save customer
+        Customer saved = customerRepository.save(customer);
+
+        // Password update
         if (rawPassword != null && !rawPassword.isBlank()) {
-            Optional<PasswordAuth> authOpt = passwordAuthRepository.findByEmail(email);
-            PasswordAuth auth = authOpt.orElseGet(PasswordAuth::new);
-
+            PasswordAuth auth = passwordAuthRepository.findByEmail(email).orElse(new PasswordAuth());
             auth.setEmail(email);
             auth.setPasswordHash(passwordEncoder.encode(rawPassword));
             passwordAuthRepository.save(auth);
         }
 
-        return savedCustomer;
+        return saved;
     }
 
     // =========================
@@ -147,11 +147,13 @@ public class CustomerService {
 
         try {
             return Integer.parseInt(value);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         try {
             return Double.parseDouble(value);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
             return Boolean.parseBoolean(value);

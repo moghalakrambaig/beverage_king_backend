@@ -3,16 +3,16 @@ package com.spiritedhub.spiritedhub.entity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Document(collection = "customers")
 public class Customer {
 
     @Id
-    private String email;
+    private String id; // MUST be filled manually
 
-    // Store all CSV data dynamically
-    private Map<String, Object> dynamicFields;
+    private Map<String, Object> dynamicFields = new HashMap<>();
 
     // Getters and Setters
     public Map<String, Object> getDynamicFields() {
@@ -23,11 +23,11 @@ public class Customer {
         this.dynamicFields = dynamicFields;
     }
 
-    public String getEmail() {
-        return email;
+    public String getId() {
+        return id;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setId(String id) {
+        this.id = id;
     }
 }

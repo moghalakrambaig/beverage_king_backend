@@ -40,7 +40,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         // 2️⃣ Try Customer Login
-        Optional<Customer> customerOpt = customerRepository.findByDynamicFieldsEmail(email);
+        Optional<Customer> customerOpt = customerRepository.findById(email);
 
         if (customerOpt.isPresent()) {
 
