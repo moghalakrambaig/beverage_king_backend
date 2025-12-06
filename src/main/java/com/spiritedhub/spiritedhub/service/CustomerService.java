@@ -27,10 +27,14 @@ public class CustomerService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // =========================
-    // 1️⃣ CSV upload method
-    // =========================
-    public List<Customer> saveCustomersFromCsv(MultipartFile file) throws IOException, CsvValidationException {
+    // ============================================================
+    // 1️⃣ CSV UPLOAD (delete all customers → reload fresh)
+    // ============================================================
+    public List<Customer> saveCustomersFromCsv(MultipartFile file)
+            throws IOException, CsvValidationException {
+
+        // DELETE ONLY CUSTOMER TABLE
+        customerRepository.deleteAll();
 
         List<Customer> customers = new ArrayList<>();
 
@@ -40,15 +44,12 @@ public class CustomerService {
             if (headers == null)
                 return customers;
 
-            boolean hasPasswordColumn = Arrays.stream(headers)
-                    .anyMatch(h -> h.equalsIgnoreCase("password"));
-
             String[] row;
+
             while ((row = reader.readNext()) != null) {
 
-                Map<String, Object> dynamicFields = new HashMap<>();
+                Map<String, Object> dynamic = new HashMap<>();
                 String email = null;
-                String passwordPlain = null;
 
                 for (int i = 0; i < headers.length; i++) {
                     String key = headers[i].trim();
@@ -56,108 +57,56 @@ public class CustomerService {
 
                     if (key.equalsIgnoreCase("email")) {
                         email = value;
-                        dynamicFields.put("Email", value);
-                        continue;
-                    }
-
-                    if (key.equalsIgnoreCase("password")) {
-                        passwordPlain = value;
+                        dynamic.put("Email", value);
                         continue;
                     }
 
                     if (!value.isEmpty()) {
-                        dynamicFields.put(key, parseValue(value));
+                        dynamic.put(key, parseValue(value));
                     }
                 }
 
-                Customer saved = createOrUpdateCustomer(email, dynamicFields, hasPasswordColumn ? passwordPlain : null);
-                customers.add(saved);
+                if (email == null || email.isBlank()) {
+                    continue; // skip rows without email (invalid)
+                }
+
+                // 1️⃣ save to customers table
+                Customer customer = new Customer();
+                customer.setId(email); // use email as id
+                customer.setDynamicFields(dynamic);
+
+                Customer savedCustomer = customerRepository.save(customer);
+                customers.add(savedCustomer);
+
+                // 2️⃣ update password table (ADD ONLY NEW)
+                Optional<PasswordAuth> existing = passwordAuthRepository.findByEmail(email);
+
+                if (existing.isEmpty()) {
+                    PasswordAuth auth = new PasswordAuth();
+                    auth.setEmail(email);
+                    auth.setPasswordHash(passwordEncoder.encode("Default@123")); // or random
+                    passwordAuthRepository.save(auth);
+                }
             }
         }
 
         return customers;
     }
 
-    // =========================
-    // 2️⃣ JSON endpoint method
-    // =========================
-    public Customer createOrUpdateCustomer(Map<String, Object> body) {
-
-        if (!body.containsKey("dynamicFields"))
-            throw new IllegalArgumentException("dynamicFields object is required");
-
-        Map<String, Object> dynamicFields = (Map<String, Object>) body.get("dynamicFields");
-
-        String email = dynamicFields.get("Email") != null ? dynamicFields.get("Email").toString() : null;
-
-        if (email == null || email.isBlank())
-            throw new IllegalArgumentException("Email field is required");
-
-        String rawPassword = body.containsKey("password") ? body.get("password").toString() : null;
-
-        return createOrUpdateCustomer(email, dynamicFields, rawPassword);
-    }
-
-    // =========================
-    // 3️⃣ Used by both CSV + JSON
-    // =========================
-    private Customer createOrUpdateCustomer(String email, Map<String, Object> fields, String rawPassword) {
-
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-
-        // Load or create customer
-        Customer customer = customerRepository.findById(email).orElse(null);
-
-        if (customer == null) {
-            customer = new Customer();
-            customer.setId(email); // email is the stable ID
-            customer.setDynamicFields(new HashMap<>());
-        }
-
-        // Update fields safely (NO LAMBDA)
-        for (Map.Entry<String, Object> entry : fields.entrySet()) {
-            Object value = entry.getValue();
-            if (value != null && !value.toString().isBlank()) {
-                customer.getDynamicFields().put(entry.getKey(), value);
-            }
-        }
-
-        // Save customer
-        Customer saved = customerRepository.save(customer);
-
-        // Password update
-        if (rawPassword != null && !rawPassword.isBlank()) {
-            PasswordAuth auth = passwordAuthRepository.findByEmail(email).orElse(new PasswordAuth());
-            auth.setEmail(email);
-            auth.setPasswordHash(passwordEncoder.encode(rawPassword));
-            passwordAuthRepository.save(auth);
-        }
-
-        return saved;
-    }
-
-    // =========================
-    // Helper for value parsing
-    // =========================
+    // ============================================================
+    // Helper to parse numbers/boolean
+    // ============================================================
     private Object parseValue(String value) {
-        if (value == null || value.isEmpty())
-            return null;
-
         try {
             return Integer.parseInt(value);
         } catch (Exception ignored) {
         }
-
         try {
             return Double.parseDouble(value);
         } catch (Exception ignored) {
         }
-
         if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
             return Boolean.parseBoolean(value);
-
         return value;
     }
 }

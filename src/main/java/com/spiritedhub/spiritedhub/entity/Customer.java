@@ -10,8 +10,9 @@ import java.util.Map;
 public class Customer {
 
     @Id
-    private String id; // MUST be filled manually
+    private String id;
 
+    // Dynamic fields stored as key-value pairs
     private Map<String, Object> dynamicFields = new HashMap<>();
 
     // Getters and Setters
