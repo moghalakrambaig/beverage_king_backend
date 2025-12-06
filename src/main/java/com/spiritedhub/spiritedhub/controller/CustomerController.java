@@ -66,7 +66,7 @@ public class CustomerController {
     // ---------------------------------------------------------
     // LOGIN
     // ---------------------------------------------------------
-    @PostMapping("/customer-login")
+    @PostMapping("/auth/customer-login")
     public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> request) {
 
         String email = request.get("email");
