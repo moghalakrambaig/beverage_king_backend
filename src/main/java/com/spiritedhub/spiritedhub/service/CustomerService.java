@@ -27,9 +27,7 @@ public class CustomerService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // ============================================================
-    // 1️⃣ CSV UPLOAD (delete all customers → reload fresh)
-    // ============================================================
+    // CSV upload: delete all customers, preserve passwords
     public List<Customer> saveCustomersFromCsv(MultipartFile file)
             throws IOException, CsvValidationException {
 
@@ -70,21 +68,23 @@ public class CustomerService {
                     continue; // skip rows without email (invalid)
                 }
 
+                final String customerEmail = email; // ✅ effectively final for inner usage
+
                 // 1️⃣ save to customers table
                 Customer customer = new Customer();
-                customer.setId(email); // use email as id
+                customer.setId(customerEmail); // use email as id
                 customer.setDynamicFields(dynamic);
 
                 Customer savedCustomer = customerRepository.save(customer);
                 customers.add(savedCustomer);
 
                 // 2️⃣ update password table (ADD ONLY NEW)
-                Optional<PasswordAuth> existing = passwordAuthRepository.findByEmail(email);
+                Optional<PasswordAuth> existing = passwordAuthRepository.findByEmail(customerEmail);
 
                 if (existing.isEmpty()) {
                     PasswordAuth auth = new PasswordAuth();
-                    auth.setEmail(email);
-                    auth.setPasswordHash(passwordEncoder.encode("Default@123")); // or random
+                    auth.setEmail(customerEmail);
+                    auth.setPasswordHash(passwordEncoder.encode("Default@123")); // default password
                     passwordAuthRepository.save(auth);
                 }
             }
@@ -93,9 +93,7 @@ public class CustomerService {
         return customers;
     }
 
-    // ============================================================
     // Helper to parse numbers/boolean
-    // ============================================================
     private Object parseValue(String value) {
         try {
             return Integer.parseInt(value);

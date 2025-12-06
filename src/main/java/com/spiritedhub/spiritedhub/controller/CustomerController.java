@@ -3,6 +3,7 @@ package com.spiritedhub.spiritedhub.controller;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,22 +39,27 @@ public class CustomerController {
     // ---------------------------------------------------------
     // UPLOAD CSV (MAIN ENDPOINT)
     // ---------------------------------------------------------
+    // UPLOAD CSV (MAIN ENDPOINT)
     @PostMapping("/customers/upload-csv")
-    public ResponseEntity<ApiResponse> uploadCsv(@RequestParam("file") MultipartFile file) {
-        try {
-            if (file == null || file.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse("CSV file is required", null));
-            }
+    public ResponseEntity<?> uploadCsv(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "CSV file is required",
+                    "customers", Collections.emptyList()));
+        }
 
+        try {
             List<Customer> customers = customerService.saveCustomersFromCsv(file);
 
-            return ResponseEntity.ok(
-                    new ApiResponse("CSV processed successfully", customers));
+            return ResponseEntity.ok(Map.of(
+                    "message", "CSV uploaded successfully",
+                    "customers", customers));
 
-        } catch (IOException | CsvValidationException e) {
-            return ResponseEntity.status(500)
-                    .body(new ApiResponse("Failed to process CSV: " + e.getMessage(), null));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "message", "Failed to upload CSV: " + e.getMessage(),
+                    "customers", Collections.emptyList()));
         }
     }
 
