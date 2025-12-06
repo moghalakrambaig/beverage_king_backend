@@ -10,7 +10,6 @@ import java.time.Instant;
 public class Admin {
 
     @Id
-    private String id;
     private String email; // Primary key
     private String password;
     private String resetPasswordToken;
